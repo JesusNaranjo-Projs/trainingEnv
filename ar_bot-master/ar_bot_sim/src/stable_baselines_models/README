@@ -1,0 +1,3 @@
+# stable_baselines/boxed
+
+This directory holds algorithms and trained models using continous (boxed) action spaces trained using StableBaselines3

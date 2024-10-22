@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<robot name="arena">
+
+  <material name="black">
+    <color rgba="0 0 0 1" />
+  </material>
+  <material name="white">
+    <color rgba="1 1 1 1" />
+  </material>
+
+  <link name="base_link">
+    <contact>
+      <lateral_friction value="1" />
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <mass value=".0" />
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="arena_base.obj" scale=".001 .001 .001" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    <collision name="ground">
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <plane normal="0 0 1" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="connection_joint" type="fixed">
+    <axis rpy="0 0 0" xyz="0 0 0" />
+    <parent link="base_link" />
+    <child link="wall_link" />
+    <origin rpy="0 0 1.57075" xyz="0 0 0.1" />
+  </joint>
+
+  <link name="wall_link">
+    <contact>
+      <lateral_friction value="1" />
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <mass value=".0" />
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
+    </inertial>
+    <visual>
+      <origin rpy="1.57075 0 0" xyz="0 0 -.1" />
+      <geometry>
+        <mesh filename="arena_walls.obj" scale=".001 .001 .001" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision name="wall1">
+      <origin rpy="1.57075 0 0" xyz="0 0.635 0" />
+      <geometry>
+        <plane normal="0 0 1" />
+      </geometry>
+    </collision>
+    <collision name="wall2">
+      <origin rpy="0 0 0" xyz="0 -0.635 0" />
+      <geometry>
+        <plane normal="0 1 0" />
+      </geometry>
+    </collision>
+    <collision name="wall3">
+      <origin rpy="0 0 0" xyz="-.385 0 0" />
+      <geometry>
+        <plane normal="1 0 0" />
+      </geometry>
+    </collision>
+    <collision name="wall4">
+      <origin rpy="0 0 1.57075" xyz=".385 0 0" />
+      <geometry>
+        <plane normal="0 1 0" />
+      </geometry>
+    </collision>
+  </link>
+</robot>

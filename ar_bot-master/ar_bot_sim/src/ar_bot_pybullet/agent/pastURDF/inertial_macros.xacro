@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+
+<!-- 
+Purpose:
+    xacro interia calculation macro
+
+Based off of:
+    - the ROS URDF Tutorial: https://github.com/ros/urdf_tutorial/blob/master/urdf/06-flexible.urdf
+    - URDF Tutorial by Articulated Robotics:
+        https://github.com/joshnewans/articubot_one/blob/d5aa5e9bc9039073c0d8fd7fe426e170be79c087/description/robot_core.xacro
+-->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="solid_sphere_inertia" params="mass radius *origin">
+        <inertial>
+            <xacro:insert_block name="origin"/>
+            <mass value="${mass}" />
+            <inertia ixx="${(2/5) * mass * (radius*radius)}" ixy="0.0" ixz="0.0"
+                iyy="${(2/5) * mass * (radius*radius)}" iyz="0.0"
+                izz="${(2/5) * mass * (radius*radius)}" />
+        </inertial>
+    </xacro:macro>
+
+
+    <xacro:macro name="solid_cuboid_inertia" params="mass height depth width *origin">
+        <inertial>
+            <xacro:insert_block name="origin"/>
+            <mass value="${mass}" />
+            <inertia ixx="${(mass*(height*height+depth*depth))/12}" ixy="0" ixz="0"
+                iyy="${(mass*(width*width+depth*depth))/12}" iyz="0"
+                izz="${(mass*(width*width+height*height))/12}"
+            />
+        </inertial>
+    </xacro:macro>
+
+
+    <xacro:macro name="solid_cylinder_inertia" params="mass height radius *origin">
+        <inertial>
+            <xacro:insert_block name="origin"/>
+            <mass value="${mass}" />
+            <inertia ixx="${(1/12) * mass * (3*radius*radius + height*height)}" ixy="0.0" ixz="0.0"
+                iyy="${(1/12) * mass * (3*radius*radius + height*height)}" iyz="0.0"
+                izz="${(1/2) * mass * (radius*radius)}" />
+        </inertial>
+    </xacro:macro>
+
+
+</robot>
