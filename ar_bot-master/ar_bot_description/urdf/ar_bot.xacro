@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+
+<!-- 
+Brennan Miller-Klugman
+
+Purpose:
+    URDF File for the AR Bot
+
+Based off of:
+    - the ROS URDF Tutorial: https://github.com/ros/urdf_tutorial/blob/master/urdf/06-flexible.urdf
+    - URDF Tutorial by Articulated Robotics:
+        https://github.com/joshnewans/articubot_one/blob/d5aa5e9bc9039073c0d8fd7fe426e170be79c087/description/robot_core.xacro
+-->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arbot">
+    <xacro:include filename="inertial_macros.xacro"/>
+
+    <material name="blue">
+        <color rgba="0 0 0.8 1" />
+    </material>
+    <material name="neon_blue">
+        <color rgba="0 100 255 1" />
+    </material>
+    <material name="black">
+        <color rgba="0 0 0 1" />
+    </material>
+
+    <link name="base_link">
+        <visual>
+            <origin rpy="0 0 0.03" xyz="0 0 0" />
+
+            <geometry>
+                <box size="0.078 0.082 0.08" />
+            </geometry>
+            <material name="blue" />
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.078 0.082 0.08" />
+            </geometry>
+        </collision>
+        <xacro:solid_cuboid_inertia mass="0.05" height="0.08" depth="0.082" width="0.078">
+            <origin rpy="0 0 0.03" xyz="0 0 0" />
+        </xacro:solid_cuboid_inertia>
+    </link>
+
+    <joint name="right_wheel_joint" type="continuous">
+        <axis rpy="0 0 0" xyz="0 0 1" />
+        <parent link="base_link" />
+        <child link="right_wheel" />
+        <origin rpy="1.57075 0 0" xyz="0.015 -0.046 -0.02" />
+    </joint>
+    <link name="right_wheel">
+        <visual>
+            <geometry>
+                <cylinder length="0.008" radius="0.03" />
+            </geometry>
+            <material name="black" />
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder length="0.008" radius="0.03" />
+            </geometry>
+        </collision>
+        <xacro:solid_cylinder_inertia mass="0.01" height="0.008" radius="0.03">
+            <origin rpy="0 0 0" xyz="0 0 0" />
+        </xacro:solid_cylinder_inertia>
+    </link>
+
+
+    <joint name="left_wheel_joint" type="continuous">
+        <axis rpy="0 0 0" xyz="0 0 1" />
+        <parent link="base_link" />
+        <child link="left_wheel" />
+        <origin rpy="1.57075 0 0" xyz="0.015 0.046 -0.02" />
+    </joint>
+    <link name="left_wheel">
+        <visual>
+            <geometry>
+                <cylinder length="0.008" radius="0.03" />
+            </geometry>
+            <material name="black" />
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder length="0.008" radius="0.03" />
+            </geometry>
+        </collision>
+        <xacro:solid_cylinder_inertia mass="0.01 " height="0.008" radius="0.03">
+            <origin rpy="0 0 0" xyz="0 0 0" />
+        </xacro:solid_cylinder_inertia>
+    </link>
+
+    <joint name="caster_wheel_joint" type="fixed">
+        <parent link="base_link" />
+        <child link="caster_wheel" />
+        <origin rpy="0 0 0" xyz="-0.027 0 -0.0475" />
+    </joint>
+    <link name="caster_wheel">
+        <visual>
+            <geometry>
+                <sphere radius="0.006" />
+            </geometry>
+            <material name="black" />
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="0.006" />
+            </geometry>
+        </collision>
+        <xacro:solid_sphere_inertia mass="0.01" radius="0.006">
+            <origin rpy="0 0 0" xyz="0 0 0" />
+        </xacro:solid_sphere_inertia>
+    </link>
+
+</robot>
