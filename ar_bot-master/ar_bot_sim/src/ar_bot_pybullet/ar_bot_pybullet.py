@@ -1,3 +1,12 @@
+Conversation opened. 1 unread message.
+
+Skip to content
+Using Gmail with screen readers
+Conversations
+6.09 GB of 15 GB used
+Terms · Privacy · Program Policies
+Last account activity: 1 hour ago
+Details
 #!/usr/bin/env python3
 
 """
@@ -22,7 +31,7 @@ import numpy as np
 from pybullet_utils import bullet_client
 
 class ARBotPybullet:
-    def __init__(self, client: int, gui: bool, random_generator) -> None:
+    def __init__(self, client: int, gui: bool, start_position) -> None:
         """class to spawn in and control arbot
 
         :param client: physics sim client ID
@@ -31,10 +40,9 @@ class ARBotPybullet:
         self.gui = gui
         urdf_path = "/home/jesus/catkin_ws/src/trainingEnv/anki_description/anki_description/urdf/cozmo.urdf"
 
-        random_start = random_generator.uniform(-0.35, 0.35)
 
         self.arbot = self.client.loadURDF(
-            urdf_path, [0.575, random_start, 0.05]
+            urdf_path, start_position
         )
 
         self._hit_color = [1, 0, 0]
@@ -42,7 +50,9 @@ class ARBotPybullet:
         self._ray_ids = []
 
         self.speed = 10
-
+    
+    #TODO figure out which motor numbers connect to which wheels try 5-8
+    #note: 4 is up and down for the box lifter
     def apply_action(self, action: tuple) -> None:
         """
         Performs action
@@ -56,14 +66,14 @@ class ARBotPybullet:
 
         self.client.setJointMotorControl2(
             self.arbot,
-            0,
+            5,
             p.VELOCITY_CONTROL,
             targetVelocity=left_wheel_vel,
             force=1000,
         )
         self.client.setJointMotorControl2(
             self.arbot,
-            1,
+            7,
             p.VELOCITY_CONTROL,
             targetVelocity=right_wheel_vel,
             force=1000,
@@ -151,31 +161,65 @@ class ARBotPybullet:
 class teleoperate:
     def __init__(self) -> None:
         """helper class to allow teleoperation of the arbot"""
-        self.random_generator = np.random.default_rng()
+        #self.random_generator = np.random.default_rng()
 
         self.client = bullet_client.BulletClient(p.GUI)
 
         plane_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/maps/arena/arena.urdf"
         plane = p.loadURDF(plane_path)
-
+	
+	#TODO
+	#turn cube into ball
         cube_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/cube.urdf"
-
-        for obstacle in range(3):
-            obstacle_x = self.random_generator.uniform(-0.25, 0.25)
-            obstacle_y = self.random_generator.uniform(-0.4, 0.4)
-
-            obstacle = p.loadURDF(cube_path, [obstacle_y, obstacle_x, 0.05])
-
+	
+        #number_of_blocks = 1
+        #for obstacle in range(number_of_blocks):
+        #    obstacle_x = self.random_generator.uniform(-0.25, 0.25)
+        #    obstacle_y = self.random_generator.uniform(-0.4, 0.4)
+	
+        obstacle_y = 0
+        obstacle_x = 0
+        obstacle = p.loadURDF(cube_path, [obstacle_y, obstacle_x, 0.05])
+	
+	#TODO
+	#spawn two goals at oppsite ends of the box
+	#in the center of each side
         goal_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/goal.urdf"
-
-        goal_x = self.random_generator.uniform(-0.35, 0.35)
+	
+	#first goal
+        #goal_x = self.random_generator.uniform(-0.35, 0.35)
+        goal_x = 0.0
         goal_y = -0.585
         p.loadURDF(goal_path, [goal_y, goal_x, 0])
+        
+        #second goal
+        goal_x2 = 0.0
+        goal_y2 = 0.585
+        p.loadURDF(goal_path, [goal_y2, goal_x2, 0])
+        
+        
 
         goal = (goal_y, goal_x)
+	
+	#start_positions are a array of three values [x,y,z] that describe
+	#the start position for each cosmo robot
+        start_positions = [
+	    [0.4, 0.2 ,0.05],
+	    [0.4, -0.2 ,0.05],
+	    [-0.4, 0.2 ,0.05],
+	    [-0.4, -0.2 ,0.05]
+	]
+	    
+	#spawns 4 cosmo robots	    
+        arbot = ARBotPybullet(self.client, True, start_positions[0])
+        arbot1 = ARBotPybullet(self.client, True, start_positions[1])
+        arbot2 = ARBotPybullet(self.client, True, start_positions[2])
+        arbot3 = ARBotPybullet(self.client, True, start_positions[3])
 
-        arbot = ARBotPybullet(self.client, True, self.random_generator)
 
+	#TODO
+	#fix teleoperating functions because arrow keys do not move
+	#the cosmo robots wheels
         p.setRealTimeSimulation(1)
         p.setGravity(0, 0, -10)
 
@@ -223,3 +267,5 @@ class teleoperate:
 
 if __name__ == "__main__":
     teleoperate()
+ar_bot_pybullet.py
+Displaying ar_bot_pybullet.py.
