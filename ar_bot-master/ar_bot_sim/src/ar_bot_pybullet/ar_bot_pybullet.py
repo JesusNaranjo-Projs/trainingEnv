@@ -1,12 +1,3 @@
-Conversation opened. 1 unread message.
-
-Skip to content
-Using Gmail with screen readers
-Conversations
-6.09 GB of 15 GB used
-Terms · Privacy · Program Policies
-Last account activity: 1 hour ago
-Details
 #!/usr/bin/env python3
 
 """
@@ -49,7 +40,7 @@ class ARBotPybullet:
         self._miss_color = [0, 1, 0]
         self._ray_ids = []
 
-        self.speed = 10
+        self.speed = 20#10
     
     #TODO figure out which motor numbers connect to which wheels try 5-8
     #note: 4 is up and down for the box lifter
@@ -66,18 +57,19 @@ class ARBotPybullet:
 
         self.client.setJointMotorControl2(
             self.arbot,
-            5,
+            8,
             p.VELOCITY_CONTROL,
             targetVelocity=left_wheel_vel,
             force=1000,
         )
         self.client.setJointMotorControl2(
             self.arbot,
-            7,
+            5,
             p.VELOCITY_CONTROL,
             targetVelocity=right_wheel_vel,
             force=1000,
         )
+        
 
     def lidar(self) -> list:
         """simulate lidar measurement
@@ -170,7 +162,7 @@ class teleoperate:
 	
 	#TODO
 	#turn cube into ball
-        cube_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/cube.urdf"
+        cube_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/sphere_small.urdf"
 	
         #number_of_blocks = 1
         #for obstacle in range(number_of_blocks):
@@ -267,5 +259,3 @@ class teleoperate:
 
 if __name__ == "__main__":
     teleoperate()
-ar_bot_pybullet.py
-Displaying ar_bot_pybullet.py.
