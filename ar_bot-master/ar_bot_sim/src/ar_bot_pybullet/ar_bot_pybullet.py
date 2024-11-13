@@ -55,21 +55,71 @@ class ARBotPybullet:
         left_wheel_vel = (linear - angular) * self.speed
         right_wheel_vel = (linear + angular) * self.speed
 
+        """ 
+        Joint 0: Name: base_footprint_joint
+        Joint 1: Name: base_to_head
+        Joint 2: Name: head_camera_joint
+        Joint 3: Name: imu_joint
+        Joint 4: Name: base_to_lift
+        Joint 5: Name: front_left_wheel_joint
+        Joint 6: Name: front_right_wheel_joint,           0, Parent Link: front_right_wheel
+        Joint 7: Name: rear_left_wheel_joint,           0, Parent Link: rear_left_wheel
+        Joint 8: Name: rear_right_wheel_joint,           0, Parent Link: rear_right_wheel
+        Joint 9: Name: wheel_left_belt,           4, Parent Link: left_belt
+        Joint 10: Name: wheel_right_belt,           4, Parent Link: right_belt
+        Joint 11: Name: drop_ir_joint,           4, Parent Link: drop_ir
+        """
+        #front_left
+        self.client.setJointMotorControl2(
+            self.arbot,
+            5,
+            p.VELOCITY_CONTROL,
+            targetVelocity=left_wheel_vel,
+            force=1000,
+        )
+        
+        #rear_left
+        self.client.setJointMotorControl2(
+            self.arbot,
+            7,
+            p.VELOCITY_CONTROL,
+            targetVelocity=left_wheel_vel,
+            force=1000,
+        )
+
+        #front_right
+        self.client.setJointMotorControl2(
+            self.arbot,
+            6,
+            p.VELOCITY_CONTROL,
+            targetVelocity=right_wheel_vel,
+            force=1000,
+        )
+        
+        #rear_right
         self.client.setJointMotorControl2(
             self.arbot,
             8,
+            p.VELOCITY_CONTROL,
+            targetVelocity=right_wheel_vel,
+            force=1000,
+        )
+        
+        #
+        self.client.setJointMotorControl2(
+            self.arbot,
+            9,
             p.VELOCITY_CONTROL,
             targetVelocity=left_wheel_vel,
             force=1000,
         )
         self.client.setJointMotorControl2(
             self.arbot,
-            5,
+            10,
             p.VELOCITY_CONTROL,
             targetVelocity=right_wheel_vel,
             force=1000,
         )
-        
 
     def lidar(self) -> list:
         """simulate lidar measurement
@@ -191,7 +241,7 @@ class teleoperate:
         
         
 
-        goal = (goal_y, goal_x)
+        goal = (goal_y, goal_x, goal_y2, goal_x2)
 	
 	#start_positions are a array of three values [x,y,z] that describe
 	#the start position for each cosmo robot
@@ -204,9 +254,9 @@ class teleoperate:
 	    
 	#spawns 4 cosmo robots	    
         arbot = ARBotPybullet(self.client, True, start_positions[0])
-        arbot1 = ARBotPybullet(self.client, True, start_positions[1])
+        #arbot1 = ARBotPybullet(self.client, True, start_positions[1])
         arbot2 = ARBotPybullet(self.client, True, start_positions[2])
-        arbot3 = ARBotPybullet(self.client, True, start_positions[3])
+        #arbot3 = ARBotPybullet(self.client, True, start_positions[3])
 
 
 	#TODO
@@ -225,31 +275,40 @@ class teleoperate:
             robot_translation, _ = p.getBasePositionAndOrientation(
                 arbot.arbot
             )
-
-            dist_to_goal_y = robot_translation[0] - goal[0]
-            dist_to_goal_x = robot_translation[1] - goal[1]
-            if -0.05 < dist_to_goal_y < 0.05 and -0.05 < dist_to_goal_x < 0.05:
+            sphere_translation, _ = p.getBasePositionAndOrientation(
+            	obstacle
+            )
+            dist_to_goal_y = sphere_translation[0] - goal[0]
+            dist_to_goal_x = sphere_translation[1] - goal[1]
+            
+            dist_to_y2 = sphere_translation[0] - goal[2]
+            dist_to_x2 = sphere_translation[1] - goal[3]
+            
+            second_check = -0.05 < dist_to_y2 < 0.05 and -0.05 < dist_to_x2 < 0.05
+            #dist_to_goal_y = robot_translation[0] - goal[0]
+            #dist_to_goal_x = robot_translation[1] - goal[1]
+            if (-0.05 < dist_to_goal_y < 0.05 and -0.05 < dist_to_goal_x < 0.05) or second_check:
                 print(f"Goal Reached")
                 break
 
             for k, v in keys.items():
                 if k == p.B3G_RIGHT_ARROW and (v & p.KEY_WAS_TRIGGERED):
-                    turn = -0.5
+                    turn = -0.75
                 if k == p.B3G_RIGHT_ARROW and (v & p.KEY_WAS_RELEASED):
-                    turn = 0
+                    turn = 0.0001
                 if k == p.B3G_LEFT_ARROW and (v & p.KEY_WAS_TRIGGERED):
-                    turn = 0.5
+                    turn = 0.75
                 if k == p.B3G_LEFT_ARROW and (v & p.KEY_WAS_RELEASED):
-                    turn = 0
+                    turn = 0.0001
 
                 if k == p.B3G_UP_ARROW and (v & p.KEY_WAS_TRIGGERED):
-                    forward = 0.5
+                    forward = 0.75
                 if k == p.B3G_UP_ARROW and (v & p.KEY_WAS_RELEASED):
-                    forward = 0
+                    forward = 0.0001
                 if k == p.B3G_DOWN_ARROW and (v & p.KEY_WAS_TRIGGERED):
-                    forward = -0.5
+                    forward = -0.75
                 if k == p.B3G_DOWN_ARROW and (v & p.KEY_WAS_RELEASED):
-                    forward = 0
+                    forward = 0.0001
 
             arbot.apply_action((forward, turn))
             arbot.lidar()
