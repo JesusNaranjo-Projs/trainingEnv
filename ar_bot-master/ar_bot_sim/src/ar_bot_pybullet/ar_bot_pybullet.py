@@ -214,10 +214,6 @@ class teleoperate:
 	#turn cube into ball
         cube_path = "/env/obstacles/sphere_small.urdf"
 
-        
-        
-
-	
         #number_of_blocks = 1
         #for obstacle in range(number_of_blocks):
         #    obstacle_x = self.random_generator.uniform(-0.25, 0.25)
