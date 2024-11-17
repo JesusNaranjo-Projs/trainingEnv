@@ -213,6 +213,10 @@ class teleoperate:
 	#TODO
 	#turn cube into ball
         cube_path = "/env/obstacles/sphere_small.urdf"
+
+        
+        
+
 	
         #number_of_blocks = 1
         #for obstacle in range(number_of_blocks):
