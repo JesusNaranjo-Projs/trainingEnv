@@ -29,7 +29,9 @@ class ARBotPybullet:
         """
         self.client = client
         self.gui = gui
-        urdf_path = "/anki_description/urdf/cozmo.urdf"
+
+	# Change this to the correct path for your system
+        urdf_path = "/mnt/d/Users/boyla/Desktop/School/Classwork/Halligan/trainingEnv/anki_description/urdf/cozmo.urdf"
 
         print(start_position)
 
