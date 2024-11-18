@@ -29,8 +29,9 @@ class ARBotPybullet:
         """
         self.client = client
         self.gui = gui
-        urdf_path = "/home/jesus/catkin_ws/src/trainingEnv/anki_description/anki_description/urdf/cozmo.urdf"
+        urdf_path = "/anki_description/urdf/cozmo.urdf"
 
+        print(start_position)
 
         self.arbot = self.client.loadURDF(
             urdf_path, start_position
@@ -207,12 +208,12 @@ class teleoperate:
 
         self.client = bullet_client.BulletClient(p.GUI)
 
-        plane_path = "/env/maps/arena/arena.urdf"
+        plane_path = "ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/maps/arena/arena.urdf"
         plane = p.loadURDF(plane_path)
 	
 	#TODO
 	#turn cube into ball
-        cube_path = "/env/obstacles/sphere_small.urdf"
+        cube_path = "ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/sphere_small.urdf"
 
         #number_of_blocks = 1
         #for obstacle in range(number_of_blocks):
@@ -226,7 +227,7 @@ class teleoperate:
 	#TODO
 	#spawn two goals at oppsite ends of the box
 	#in the center of each side
-        goal_path = "/env/obstacles/goal.urdf"
+        goal_path = "ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/goal.urdf"
 	
 	#first goal
         #goal_x = self.random_generator.uniform(-0.35, 0.35)
@@ -235,13 +236,13 @@ class teleoperate:
         p.loadURDF(goal_path, [goal_y, goal_x, 0])
         
         #second goal
-        goal_x2 = 0.0
-        goal_y2 = 0.585
-        p.loadURDF(goal_path, [goal_y2, goal_x2, 0])
+        # goal_x2 = 0.0
+        # goal_y2 = 0.585
+        # p.loadURDF(goal_path, [goal_y2, goal_x2, 0])
         
         
 
-        goal = (goal_y, goal_x, goal_y2, goal_x2)
+        goal = (goal_y, goal_x)#, goal_y2, goal_x2)
 	
 	#start_positions are a array of three values [x,y,z] that describe
 	#the start position for each cosmo robot
@@ -255,7 +256,7 @@ class teleoperate:
 	#spawns 4 cosmo robots	    
         arbot = ARBotPybullet(self.client, True, start_positions[0])
         #arbot1 = ARBotPybullet(self.client, True, start_positions[1])
-        arbot2 = ARBotPybullet(self.client, True, start_positions[2])
+        #arbot2 = ARBotPybullet(self.client, True, start_positions[2])
         #arbot3 = ARBotPybullet(self.client, True, start_positions[3])
 
 
@@ -281,13 +282,13 @@ class teleoperate:
             dist_to_goal_y = sphere_translation[0] - goal[0]
             dist_to_goal_x = sphere_translation[1] - goal[1]
             
-            dist_to_y2 = sphere_translation[0] - goal[2]
-            dist_to_x2 = sphere_translation[1] - goal[3]
+            # dist_to_y2 = sphere_translation[0] - goal[2]
+            # dist_to_x2 = sphere_translation[1] - goal[3]
             
-            second_check = -0.05 < dist_to_y2 < 0.05 and -0.05 < dist_to_x2 < 0.05
+            # second_check = -0.05 < dist_to_y2 < 0.05 and -0.05 < dist_to_x2 < 0.05
             #dist_to_goal_y = robot_translation[0] - goal[0]
             #dist_to_goal_x = robot_translation[1] - goal[1]
-            if (-0.05 < dist_to_goal_y < 0.05 and -0.05 < dist_to_goal_x < 0.05) or second_check:
+            if (-0.05 < dist_to_goal_y < 0.05 and -0.05 < dist_to_goal_x < 0.05):
                 print(f"Goal Reached")
                 break
 
