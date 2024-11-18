@@ -42,17 +42,17 @@ class TrainARBot:
             del env
 
             # check if save location is specified, if so save last model for replaying
-            if model_save_location is not None:
-                model.save(model_save_location)
+            # if model_save_location is not None:
+            #     model.save(model_save_location)
 
-            # Convert to numpy array for saving
-            total_sum_reward_tracker = np.array(total_sum_reward_tracker, dtype=np.float32)
-            total_timestep_tracker = np.array(total_timestep_tracker, dtype=np.float32)
+            # # Convert to numpy array for saving
+            # total_sum_reward_tracker = np.array(total_sum_reward_tracker, dtype=np.float32)
+            # total_timestep_tracker = np.array(total_timestep_tracker, dtype=np.float32)
 
-            # check if save location is specified, if so save training_data_location
-            if training_data_location is not None:
-                with open(training_data_location, 'wb') as training_data_file:
-                    np.save(training_data_file, total_sum_reward_tracker)
-                    np.save(training_data_file, total_timestep_tracker)
+            # # check if save location is specified, if so save training_data_location
+            # if training_data_location is not None:
+            #     with open(training_data_location, 'wb') as training_data_file:
+            #         np.save(training_data_file, total_sum_reward_tracker)
+            #         np.save(training_data_file, total_timestep_tracker)
 
-            return total_sum_reward_tracker, total_timestep_tracker
+            # return total_sum_reward_tracker, total_timestep_tracker
