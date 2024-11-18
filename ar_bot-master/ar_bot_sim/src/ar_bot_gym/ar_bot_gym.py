@@ -107,13 +107,13 @@ class ARBotGym(gym.Env):
         plane_path = "ar_bot_pybullet/env/maps/arena/arena.urdf"
         _ = p.loadURDF(plane_path)
 
-        cube_path = "ar_bot_pybullet/env/obstacles/cube.urdf"
+        ball_path = "ar_bot_pybullet/env/obstacles/small_sphere.urdf"
         if self.obstacle:
             for _ in range(self.random_generator.integers(0, 3)):
                 obstacle_x = self.random_generator.uniform(-0.25, 0.25)
                 obstacle_y = self.random_generator.uniform(-0.4, 0.4)
 
-                obstacle = p.loadURDF(cube_path, [obstacle_y, obstacle_x, 0.05])
+                obstacle = p.loadURDF(ball_path, [obstacle_y, obstacle_x, 0.05])
 
         # Spawn random goal
         goal_path = "ar_bot_pybullet/env/obstacles/goal.urdf"
