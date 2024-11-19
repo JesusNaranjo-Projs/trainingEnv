@@ -107,6 +107,7 @@ class ARBotGym(gym.Env):
         plane_path = "ar_bot_pybullet/env/maps/arena/arena.urdf"
         _ = p.loadURDF(plane_path)
 
+        # Doesn't seem like the obstacle actually gets used
         ball_path = "ar_bot_pybullet/env/obstacles/sphere_small.urdf"
         if self.obstacle:
             for _ in range(self.random_generator.integers(0, 3)):
@@ -118,8 +119,8 @@ class ARBotGym(gym.Env):
         # Spawn random goal
         goal_path = "ar_bot_pybullet/env/obstacles/goal.urdf"
 
-        goal_x = self.random_generator.uniform(-0.335, 0.335)
-        goal_y = -0.585
+        ar_bot_x = 0.5
+        ar_bot_y = self.random_generator.uniform(-0.4, 0.4)
         p.loadURDF(goal_path, [goal_y, goal_x, 0])
         
         # Spawn robot randomly
