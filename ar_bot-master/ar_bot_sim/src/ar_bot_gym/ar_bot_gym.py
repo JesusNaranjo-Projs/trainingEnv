@@ -119,15 +119,14 @@ class ARBotGym(gym.Env):
         # Spawn random goal
         goal_path = "ar_bot_pybullet/env/obstacles/goal.urdf"
 
-        ar_bot_x = 0.5
-        ar_bot_y = self.random_generator.uniform(-0.4, 0.4)
+        goal_x = self.random_generator.uniform(-0.335, 0.335)
+        goal_y = -0.585
         p.loadURDF(goal_path, [goal_y, goal_x, 0])
         
         # Spawn robot randomly
-        # I chose these values randomly. Don't really know what the right range is for each but I based them off the goal location
-        ar_bot_x = self.random_generator.uniform(-0.4, 0.4)
+        ar_bot_x = self.random_generator.uniform(-0.335, 0.335)
         ar_bot_y = 0.585
-        self.ar_bot = self.agent(self.client, self.render, [ar_bot_x, ar_bot_y, 0])
+        self.ar_bot = self.agent(self.client, self.render, [ar_bot_y, ar_bot_x, 0])
 
         self.goal = (goal_y, goal_x)
 
