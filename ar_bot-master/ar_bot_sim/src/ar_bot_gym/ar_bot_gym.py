@@ -22,12 +22,13 @@ class ARBotGym(gym.Env):
         self.agent = agent
         self.render = render
         self.obstacle = obstacle
+        self.ball = None
 
         self.action_space = actions
 
         self.observation_space = gym.spaces.box.Box(
-            low=np.array([-1.5, -1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0]), # x, y distance to goal, and Lidar readings between 0 and 1
-            high=np.array([1.5, 1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            low=np.array([-1.5, -1.5, -1.5, -1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0]), # x, y distance to ball, x, y distance of ball to goal, and Lidar readings between 0 and 1
+            high=np.array([1.5, 1.5, 1.5, 1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
         )
 
         self.total_sum_reward_tracker = []
@@ -68,8 +69,16 @@ class ARBotGym(gym.Env):
         )
         reward = -0.1
 
-        dist_to_goal_y = robot_translation[0] - self.goal[0]
-        dist_to_goal_x = robot_translation[1] - self.goal[1]
+        ball_translation, _ = p.getBasePositionAndOrientation(self.ball)
+
+        dist_to_ball_y = robot_translation[0] - ball_translation[0]
+        dist_to_ball_x = robot_translation[1] - ball_translation[1]
+
+        dist_to_goal_y = ball_translation[0] - self.goal[0]
+        dist_to_goal_x = ball_translation[1] - self.goal[1]
+        
+        # dist_to_goal_y = robot_translation[0] - self.goal[0]
+        # dist_to_goal_x = robot_translation[1] - self.goal[1]
 
         complete = False
 
@@ -85,8 +94,11 @@ class ARBotGym(gym.Env):
             complete = True
             reward = 1000
             self.count = 0
+        else: # This is for dense reward
+            dist_to_goal = math.sqrt(dist_to_goal_y ** 2 + dist_to_goal_x ** 2)
+            reward = min(1 / (dist_to_goal), 1000)
 
-        obs = [dist_to_goal_y, dist_to_goal_x] + lidar
+        obs = [dist_to_ball_y, dist_to_ball_x] + [dist_to_goal_y, dist_to_goal_x] + lidar
 
         self.episode_reward_tracker.append(reward)
 
@@ -110,12 +122,11 @@ class ARBotGym(gym.Env):
         # Doesn't seem like the obstacle actually gets used
         ball_path = "ar_bot_pybullet/env/obstacles/sphere_small.urdf"
         if self.obstacle:
-            for _ in range(self.random_generator.integers(0, 3)):
-                obstacle_x = self.random_generator.uniform(-0.25, 0.25)
-                obstacle_y = self.random_generator.uniform(-0.4, 0.4)
-
-                obstacle = p.loadURDF(ball_path, [obstacle_y, obstacle_x, 0.05])
-
+            ball_x = self.random_generator.uniform(-0.25, 0.25)
+            ball_y = self.random_generator.uniform(0, 0.4)
+            
+            self.ball = p.loadURDF(ball_path, [ball_y, ball_x, 0.05])
+        
         # Spawn random goal
         goal_path = "ar_bot_pybullet/env/obstacles/goal.urdf"
 
@@ -134,12 +145,17 @@ class ARBotGym(gym.Env):
             self.ar_bot.arbot
         )
 
-        dist_to_goal_y = robot_translation[0] - self.goal[0]
-        dist_to_goal_x = robot_translation[1] - self.goal[1]
+        ball_translation, _ = p.getBasePositionAndOrientation(self.ball)
+
+        dist_to_ball_y = robot_translation[0] - ball_translation[0]
+        dist_to_ball_x = robot_translation[1] - ball_translation[1]
+
+        dist_to_goal_y = ball_translation[0] - self.goal[0]
+        dist_to_goal_x = ball_translation[1] - self.goal[1]
 
         lidar = list(self.ar_bot.lidar())
 
-        obs = [dist_to_goal_y, dist_to_goal_x] + lidar
+        obs = [dist_to_ball_y, dist_to_ball_x] + [dist_to_goal_y, dist_to_goal_x] + lidar
 
         return np.array(obs, dtype=np.float32), {}
 
