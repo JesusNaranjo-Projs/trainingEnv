@@ -7,12 +7,13 @@ class TrainARBot:
     given an model, action space, and model
     '''
 
-    def __init__(self, agent, env, actions, model, action_mapping = None) -> None:
+    def __init__(self, agent, env, actions, model, dense = False, action_mapping = None) -> None:
         self.agent = agent
         self.env = env
         self.actions = actions
         self.model = model
         self.action_mapping = action_mapping
+        self.dense = dense
 
     def train(self, num_episodes, model_save_location = None, training_data_location = None, seed=43, obstacle = False) -> tuple:
             '''
@@ -27,7 +28,7 @@ class TrainARBot:
             '''
             random_generator = np.random.default_rng(seed)
 
-            env = self.env(self.agent, self.actions, self.action_mapping, random_generator, obstacle)
+            env = self.env(self.agent, self.actions, self.action_mapping, random_generator, obstacle, self.dense)
 
             callback_max_episodes = StopTrainingOnMaxEpisodes(max_episodes=num_episodes)
 

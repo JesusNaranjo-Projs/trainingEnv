@@ -12,7 +12,7 @@ class ARBotGym(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, agent, actions, discrete_action_mapping, random_generator, obstacle, render = False):
+    def __init__(self, agent, actions, discrete_action_mapping, random_generator, obstacle, dense = False, render = False):
         '''
         Setup Gym environment, start pybullet and call reset
 
@@ -24,6 +24,7 @@ class ARBotGym(gym.Env):
         self.render = render
         self.obstacle = obstacle
         self.ball = None
+        self.dense = dense
 
         self.action_space = actions
 
@@ -95,7 +96,7 @@ class ARBotGym(gym.Env):
             complete = True
             reward = 1000
             self.count = 0
-        else: # This is for dense reward
+        elif self.dense: # This is for dense reward
             dist_to_goal = math.sqrt(dist_to_goal_y ** 2 + dist_to_goal_x ** 2)
             reward = min(1 / (dist_to_goal), 1000)
 
@@ -120,7 +121,6 @@ class ARBotGym(gym.Env):
         plane_path = "ar_bot_pybullet/env/maps/arena/arena.urdf"
         _ = p.loadURDF(plane_path)
 
-        # Doesn't seem like the obstacle actually gets used
         ball_path = "ar_bot_pybullet/env/obstacles/sphere_small.urdf"
         if self.obstacle:
             ball_x = self.random_generator.uniform(-0.25, 0.25)
@@ -138,7 +138,9 @@ class ARBotGym(gym.Env):
         # Spawn robot randomly
         ar_bot_x = self.random_generator.uniform(-0.335, 0.335)
         ar_bot_y = 0.55
-        self.ar_bot = self.agent(self.client, self.render, [ar_bot_y, ar_bot_x, 0])
+        self.ar_bot = self.agent(self.client, self.render,
+                [ar_bot_y, ar_bot_x, 0],
+                p.getQuaternionFromEuler([0,0,math.pi]))
 
         self.goal = (goal_y, goal_x)
 

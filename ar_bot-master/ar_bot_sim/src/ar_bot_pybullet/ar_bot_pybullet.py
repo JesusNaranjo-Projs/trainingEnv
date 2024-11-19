@@ -22,7 +22,7 @@ import numpy as np
 from pybullet_utils import bullet_client
 
 class ARBotPybullet:
-    def __init__(self, client: int, gui: bool, start_position) -> None:
+    def __init__(self, client: int, gui: bool, start_position, start_oreintation) -> None:
         """class to spawn in and control arbot
 
         :param client: physics sim client ID
@@ -33,10 +33,8 @@ class ARBotPybullet:
 	# Change this to the correct path for your system
         urdf_path = "/mnt/c/Users/boyla/Desktop/Classwork/Halligan/trainingEnv/anki_description/urdf/cozmo.urdf"
 
-        print(start_position)
-
         self.arbot = self.client.loadURDF(
-            urdf_path, start_position
+            urdf_path, start_position, start_oreintation
         )
 
         self._hit_color = [1, 0, 0]
@@ -139,7 +137,7 @@ class ARBotPybullet:
         )
 
         # Cast rays and get measurements
-        for i, ray_angle in enumerate(np.linspace(120, 240, num_rays)):      
+        for i, ray_angle in enumerate(np.linspace(-60, 60, num_rays)):      
             ray_angle = (
                 np.radians(ray_angle) + p.getEulerFromQuaternion(robot_orientation)[2]
             )
