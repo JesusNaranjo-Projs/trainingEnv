@@ -12,7 +12,7 @@ class ARBotGym(gym.Env):
 
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, agent, actions, discrete_action_mapping, random_generator, obstacle, dense = False, render = False):
+    def __init__(self, agent, actions, discrete_action_mapping, random_generator, dense = False, render = False):
         '''
         Setup Gym environment, start pybullet and call reset
 
@@ -22,7 +22,6 @@ class ARBotGym(gym.Env):
         self.discrete_action_mapping = discrete_action_mapping
         self.agent = agent
         self.render = render
-        self.obstacle = obstacle
         self.ball = None
         self.dense = dense
 
@@ -122,11 +121,11 @@ class ARBotGym(gym.Env):
         _ = p.loadURDF(plane_path)
 
         ball_path = "ar_bot_pybullet/env/obstacles/sphere_small.urdf"
-        if self.obstacle:
-            ball_x = self.random_generator.uniform(-0.25, 0.25)
-            ball_y = self.random_generator.uniform(0, 0.4)
-            
-            self.ball = p.loadURDF(ball_path, [ball_y, ball_x, 0.05])
+
+        ball_x = self.random_generator.uniform(-0.25, 0.25)
+        ball_y = self.random_generator.uniform(0, 0.4)
+        
+        self.ball = p.loadURDF(ball_path, [ball_y, ball_x, 0.05])
         
         # Spawn random goal
         goal_path = "ar_bot_pybullet/env/obstacles/goal.urdf"

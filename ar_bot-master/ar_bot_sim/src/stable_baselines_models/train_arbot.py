@@ -15,7 +15,7 @@ class TrainARBot:
         self.action_mapping = action_mapping
         self.dense = dense
 
-    def train(self, num_episodes, model_save_location = None, training_data_location = None, seed=43, obstacle = False) -> tuple:
+    def train(self, num_episodes, model_save_location = None, training_data_location = None, seed=43) -> tuple:
             '''
             train function is used to train a model
 
@@ -28,7 +28,7 @@ class TrainARBot:
             '''
             random_generator = np.random.default_rng(seed)
 
-            env = self.env(self.agent, self.actions, self.action_mapping, random_generator, obstacle, self.dense)
+            env = self.env(self.agent, self.actions, self.action_mapping, random_generator, self.dense)
 
             callback_max_episodes = StopTrainingOnMaxEpisodes(max_episodes=num_episodes)
 
