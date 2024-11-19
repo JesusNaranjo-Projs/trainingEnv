@@ -3,6 +3,7 @@ import pybullet as p
 import numpy as np
 from typing import Optional
 from pybullet_utils import bullet_client
+import math
 
 class ARBotGym(gym.Env):
     '''
@@ -136,7 +137,7 @@ class ARBotGym(gym.Env):
         
         # Spawn robot randomly
         ar_bot_x = self.random_generator.uniform(-0.335, 0.335)
-        ar_bot_y = 0.585
+        ar_bot_y = 0.55
         self.ar_bot = self.agent(self.client, self.render, [ar_bot_y, ar_bot_x, 0])
 
         self.goal = (goal_y, goal_x)

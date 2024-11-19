@@ -16,7 +16,7 @@ actions = gym.spaces.box.Box(
         )
 
 # Change model name if a different model/path is used
-model_name = "stable_baselines_models/trained_models/simple_ppo_boxed"
+model_name = "stable_baselines_models/trained_models/complex_ppo_boxed"
 model = PPO.load(model_name)
 random_generator = np.random.default_rng(43)
 

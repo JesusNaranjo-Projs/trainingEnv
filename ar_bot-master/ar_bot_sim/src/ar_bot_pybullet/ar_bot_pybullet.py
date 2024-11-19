@@ -31,7 +31,7 @@ class ARBotPybullet:
         self.gui = gui
 
 	# Change this to the correct path for your system
-        urdf_path = "/mnt/d/Users/boyla/Desktop/School/Classwork/Halligan/trainingEnv/anki_description/urdf/cozmo.urdf"
+        urdf_path = "/mnt/c/Users/boyla/Desktop/Classwork/Halligan/trainingEnv/anki_description/urdf/cozmo.urdf"
 
         print(start_position)
 
