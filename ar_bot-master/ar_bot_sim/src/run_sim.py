@@ -20,7 +20,7 @@ model_name = "stable_baselines_models/trained_models/complex_ppo_boxed"
 model = PPO.load(model_name)
 random_generator = np.random.default_rng(43)
 
-env = ARBotGym(ARBotPybullet, actions, None, random_generator, True, True, True)
+env = ARBotGym(ARBotPybullet, actions, None, random_generator, True, True)
 obs, info = env.reset()
 while True:
     action, _states = model.predict(obs, deterministic=True)

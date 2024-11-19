@@ -68,7 +68,7 @@ class ARBotGym(gym.Env):
         robot_translation, _ = p.getBasePositionAndOrientation(
             self.ar_bot.arbot
         )
-        reward = -0.1
+        reward = -1
 
         ball_translation, _ = p.getBasePositionAndOrientation(self.ball)
 
@@ -77,9 +77,6 @@ class ARBotGym(gym.Env):
 
         dist_to_goal_y = ball_translation[0] - self.goal[0]
         dist_to_goal_x = ball_translation[1] - self.goal[1]
-        
-        # dist_to_goal_y = robot_translation[0] - self.goal[0]
-        # dist_to_goal_x = robot_translation[1] - self.goal[1]
 
         complete = False
 
@@ -131,7 +128,7 @@ class ARBotGym(gym.Env):
         goal_path = "ar_bot_pybullet/env/obstacles/goal.urdf"
 
         goal_x = self.random_generator.uniform(-0.335, 0.335)
-        goal_y = -0.585
+        goal_y = self.random_generator.uniform(-0.585, 0)
         p.loadURDF(goal_path, [goal_y, goal_x, 0])
         
         # Spawn robot randomly
