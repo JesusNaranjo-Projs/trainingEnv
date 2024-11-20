@@ -28,8 +28,8 @@ class ARBotGym(gym.Env):
         self.action_space = actions
 
         self.observation_space = gym.spaces.box.Box(
-            low=np.array([-1.5, -1.5, -1.5, -1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0]), # x, y distance to ball, x, y distance of ball to goal, and Lidar readings between 0 and 1
-            high=np.array([1.5, 1.5, 1.5, 1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            low=np.array([-1.5, -1.5, -math.pi, -1.5, -1.5, -math.pi, 0, 0, 0, 0, 0, 0, 0, 0, 0]), # x, y distance to ball and angle between robot and ball, x, y distance of ball to goal and angle between ball and goal, and Lidar readings between 0 and 1
+            high=np.array([1.5, 1.5, math.pi, 1.5, 1.5, math.pi, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
         )
 
         self.total_sum_reward_tracker = []
@@ -65,22 +65,33 @@ class ARBotGym(gym.Env):
 
         p.stepSimulation()
 
-        robot_translation, _ = p.getBasePositionAndOrientation(
+        robot_translation, robot_orientaiton = p.getBasePositionAndOrientation(
             self.ar_bot.arbot
         )
-        reward = -1
+        robot_orientaiton = p.getEulerFromQuaternion(robot_orientaiton)
 
         ball_translation, _ = p.getBasePositionAndOrientation(self.ball)
 
         dist_to_ball_y = robot_translation[0] - ball_translation[0]
         dist_to_ball_x = robot_translation[1] - ball_translation[1]
 
+        # Maybe change this to distance from robot to goal
         dist_to_goal_y = ball_translation[0] - self.goal[0]
         dist_to_goal_x = ball_translation[1] - self.goal[1]
 
-        complete = False
+        # Add angle to both ball and goal
+        angle_to_ball = math.atan2(dist_to_ball_y, -1 * dist_to_ball_x) % (2 * math.pi)
+        angle_to_goal = math.atan2(dist_to_goal_y, -1 * dist_to_goal_x)
+        
+        # Make it so the robot's orientation and angle to ball are measured from same point. Positive angles are counter-clockwise
+        robot_angle = (robot_orientaiton[2] - math.pi / 2) % (2 * math.pi)
+        angle_to_ball = angle_to_ball - robot_angle
+        angle_to_ball = (angle_to_ball + math.pi) % (2 * math.pi) - math.pi
 
         lidar = list(self.ar_bot.lidar())
+
+        reward = -1
+        complete = False
 
         self.count += 1
         if self.count >= 2000:
@@ -96,7 +107,7 @@ class ARBotGym(gym.Env):
             dist_to_goal = math.sqrt(dist_to_goal_y ** 2 + dist_to_goal_x ** 2)
             reward = min(1 / (dist_to_goal), 1000)
 
-        obs = [dist_to_ball_y, dist_to_ball_x] + [dist_to_goal_y, dist_to_goal_x] + lidar
+        obs = [dist_to_ball_y, dist_to_ball_x, angle_to_ball] + [dist_to_goal_y, dist_to_goal_x, angle_to_goal] + lidar
 
         self.episode_reward_tracker.append(reward)
 
@@ -140,21 +151,32 @@ class ARBotGym(gym.Env):
 
         self.goal = (goal_y, goal_x)
 
-        robot_translation, _ = p.getBasePositionAndOrientation(
+        robot_translation, robot_orientaiton = p.getBasePositionAndOrientation(
             self.ar_bot.arbot
         )
+        robot_orientaiton = p.getEulerFromQuaternion(robot_orientaiton)
 
         ball_translation, _ = p.getBasePositionAndOrientation(self.ball)
 
         dist_to_ball_y = robot_translation[0] - ball_translation[0]
         dist_to_ball_x = robot_translation[1] - ball_translation[1]
 
+        # Maybe change this to distance from robot to goal
         dist_to_goal_y = ball_translation[0] - self.goal[0]
         dist_to_goal_x = ball_translation[1] - self.goal[1]
 
+        # Add angle to both ball and goal
+        angle_to_ball = math.atan2(dist_to_ball_y, -1 * dist_to_ball_x) % (2 * math.pi)
+        angle_to_goal = math.atan2(dist_to_goal_y, -1 * dist_to_goal_x)
+        
+        # Make it so the robot's orientation and angle to ball are measured from same point
+        robot_angle = (robot_orientaiton[2] - math.pi / 2) % (2 * math.pi)
+        angle_to_ball = angle_to_ball - robot_angle
+        angle_to_ball = (angle_to_ball + math.pi) % (2 * math.pi) - math.pi
+
         lidar = list(self.ar_bot.lidar())
 
-        obs = [dist_to_ball_y, dist_to_ball_x] + [dist_to_goal_y, dist_to_goal_x] + lidar
+        obs = [dist_to_ball_y, dist_to_ball_x, angle_to_ball] + [dist_to_goal_y, dist_to_goal_x, angle_to_goal] + lidar
 
         return np.array(obs, dtype=np.float32), {}
 
