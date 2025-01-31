@@ -93,19 +93,23 @@ class ARBotGym(gym.Env):
         reward = -1
         complete = False
 
+        # check if goal reached, if so give large reward
         self.count += 1
-        if self.count >= 2000:
+        if self.count >= 2000: # Want each episode to be 1 minute (for our reward function to work well)
             complete = True
             self.count = 0
 
         # check if goal reached, if so give large reward
         if -0.05 < dist_to_goal_y < 0.05 and -0.05 < dist_to_goal_x < 0.05:
             complete = True
-            reward = 1000
+            reward = 100
             self.count = 0
+        elif -0.05 < dist_to_own_goal_y < 0.05 and -0.05 < dist_to_own_goal_x < 0.05:
+            complete = True
+            reward = -100
         elif self.dense: # This is for dense reward
             dist_to_goal = math.sqrt(dist_to_goal_y ** 2 + dist_to_goal_x ** 2)
-            reward = min(1 / (dist_to_goal), 1000)
+            reward = -1 * dist_to_goal
 
         obs = [dist_to_ball_y, dist_to_ball_x, angle_to_ball] + [dist_to_goal_y, dist_to_goal_x, angle_to_goal] + lidar
 
