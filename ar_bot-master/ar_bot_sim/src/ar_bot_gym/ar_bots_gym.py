@@ -20,10 +20,8 @@ class ARBotGymEnv(gym.Env):
         # Action space: Each robot has [linear_velocity, angular_velocity]
         self.action_space = spaces.Box(low=np.array([-1, -1, -1, -1]), high=np.array([1, 1, 1, 1]), dtype=np.float32)
         
-        #TODO: change to add the balls position
-        # Observation space: LiDAR readings + robot positions
-        num_rays = 9
-        self.observation_space = spaces.Box(low=0, high=1, shape=(2 * (num_rays + 2),), dtype=np.float32)
+        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(32,), dtype=np.float32)
         
     def _setup_simulation(self):
         """Set up the PyBullet simulation."""
@@ -64,7 +62,7 @@ class ARBotGymEnv(gym.Env):
     def step(self, action):
         """Apply actions to both robots and return state, reward, done, and info."""
 
-        #TODO: tune duration 250hz rn
+        #TODO: tune, current duration is equal to 250hz rn
         duration = 250
         for _ in range(duration):
             self._apply_action(self.robot1_id, action[:2])
@@ -94,14 +92,16 @@ class ARBotGymEnv(gym.Env):
         for joint in [6, 8]:  # Right wheels
             p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
     
-    #TODO: add the position and orientation(not needed since ball) of the ball
+    #TODO: check if this observation space works with stable_baselines3
     def _get_observation(self):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
         lidar2 = self._simulate_lidar(self.robot2_id)
-        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
-        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
-        return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2]))
+        robPos1, robOrn1 = p.getBasePositionAndOrientation(self.robot1_id)
+        robPos2, robOrn2 = p.getBasePositionAndOrientation(self.robot2_id)
+        ballPos, _ = p.getBasePositionAndOrientation(self.sphere)
+        #[robPos1[:2], robOrn1, lidar1, robPos2[:2], robOrn2, lidar2, ballPos[:2]] <- does not work with stable_baselines3
+        return np.hstack((robPos1[:2], robOrn1, lidar1, robPos2[:2], robOrn2, lidar2, ballPos[:2]))
     
     #TODO: check for accuracy
     def _simulate_lidar(self, robot_id):
@@ -125,7 +125,7 @@ class ARBotGymEnv(gym.Env):
         distances = np.array([res[2] for res in results])
         return distances
     
-    #TODO: needs to be changed with the reward function
+    #TODO: needs to be changed with the reward function(prithvi)
     def _compute_reward(self):
         """Compute the reward function."""
         pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
@@ -133,7 +133,7 @@ class ARBotGymEnv(gym.Env):
         
         dist1 = np.linalg.norm(np.array(pos1[:2]) - self.goal_pos1)
         dist2 = np.linalg.norm(np.array(pos2[:2]) - self.goal_pos2)
-        return -(dist1 + dist2)  # Negative total distance as reward
+        return -(dist1 + dist2)
     
     #TODO: needs to check if the episode is done and by which robot
     def _is_done(self):
