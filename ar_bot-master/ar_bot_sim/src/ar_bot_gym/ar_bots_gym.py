@@ -104,24 +104,10 @@ class ARBotGymEnv(gym.Env):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
         lidar2 = self._simulate_lidar(self.robot2_id)
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
         pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
         pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
 
         return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2]))
-=======
->>>>>>> Stashed changes
-        robPos1, robOrn1 = p.getBasePositionAndOrientation(self.robot1_id)
-        robPos2, robOrn2 = p.getBasePositionAndOrientation(self.robot2_id)
-        ballPos, _ = p.getBasePositionAndOrientation(self.sphere)
-        #[robPos1[:2], robOrn1, lidar1, robPos2[:2], robOrn2, lidar2, ballPos[:2]] <- does not work with stable_baselines3
-        return np.hstack((robPos1[:2], robOrn1, lidar1, robPos2[:2], robOrn2, lidar2, ballPos[:2]))
-<<<<<<< Updated upstream
-=======
->>>>>>> 11f9f936b3103736a1c0609405abc8832b68e2f1
->>>>>>> Stashed changes
     
     #TODO: check for accuracy
     def _simulate_lidar(self, robot_id):
@@ -178,3 +164,4 @@ class ARBotGymEnv(gym.Env):
     def close(self):
         """Close the simulation."""
         p.disconnect()
+
