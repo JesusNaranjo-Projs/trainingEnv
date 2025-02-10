@@ -1,0 +1,143 @@
+import gym
+import pybullet as p
+import pybullet_data
+import numpy as np
+import time
+from gym import spaces
+from pybullet_utils import bullet_client
+
+class ARBotGymEnv(gym.Env):
+    """Gym environment for two ARBots in PyBullet."""
+    metadata = {'render.modes': ['human', 'rgb_array']}
+    
+    def __init__(self, gui=True):
+        super(ARBotGymEnv, self).__init__()
+        self.gui = gui
+        self.client = bullet_client.BulletClient(p.GUI if gui else p.DIRECT)
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        self._setup_simulation()
+        
+        # Action space: Each robot has [linear_velocity, angular_velocity]
+        self.action_space = spaces.Box(low=np.array([-1, -1, -1, -1]), high=np.array([1, 1, 1, 1]), dtype=np.float32)
+        
+        # Observation space: LiDAR readings + robot positions
+        num_rays = 9
+        self.observation_space = spaces.Box(low=0, high=1, shape=(2 * (num_rays + 2),), dtype=np.float32)
+        
+    def _setup_simulation(self):
+        """Set up the PyBullet simulation."""
+        p.setGravity(0, 0, -10)
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        p.loadURDF("env/maps/arena/arena.urdf")
+
+        # Loads the sphere
+        sphere_path = "env/obstacles/sphere_small.urdf"
+        ball = p.loadURDF(sphere_path, [0, 0, 0.05])
+        
+        # Load goals
+        self.goal_pos1 = np.array([0.0, -0.585])
+        self.goal_pos2 = np.array([0.0, 0.585])
+        p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
+        p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
+        
+        # Load robots
+        self.start_pos1 = np.array([-0.30, 0, 0.00])
+        self.start_pos2 = np.array([0.30, 0, 0.00])
+        initial_orientation1 = p.getQuaternionFromEuler([0, 0, 0])
+        initial_orientation2 = p.getQuaternionFromEuler([0, 0, np.pi])
+        self.robot1_id = p.loadURDF("agent/cozmo.urdf", self.start_pos1, initial_orientation1)
+        self.robot2_id = p.loadURDF("agent/cozmo.urdf", self.start_pos2, initial_orientation2)
+        
+    def reset(self):
+        """Reset the environment."""
+        p.resetSimulation()
+        self._setup_simulation()
+        return self._get_observation()
+    
+    def render(self, mode='human'):
+        """Render the simulation by stepping through PyBullet GUI."""
+        if self.gui:
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+    
+    
+    def step(self, action):
+        """Apply actions to both robots and return state, reward, done, and info."""
+        duration = 250
+        for _ in range(duration):
+            self._apply_action(self.robot1_id, action[:2])
+            self._apply_action(self.robot2_id, action[2:])
+            p.stepSimulation()
+
+            if self.gui:
+                time.sleep(1./240.)
+        
+        obs = self._get_observation()
+        reward = self._compute_reward()
+        done = self._is_done()
+        info = {}
+        
+        return obs, reward, done, info
+    
+    def _apply_action(self, robot_id, action):
+        """Apply motion commands to a robot."""
+        linear, angular = action
+        speed = 10
+        left_wheel_vel = (linear - angular) * speed
+        right_wheel_vel = (linear + angular) * speed
+        
+        for joint in [5, 7]:  # Left wheels
+            p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=left_wheel_vel, force=1000)
+        
+        for joint in [6, 8]:  # Right wheels
+            p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
+    
+    def _get_observation(self):
+        """Get LiDAR readings and robot positions for both robots."""
+        lidar1 = self._simulate_lidar(self.robot1_id)
+        lidar2 = self._simulate_lidar(self.robot2_id)
+        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
+        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+        return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2]))
+    
+    def _simulate_lidar(self, robot_id):
+        """Simulate LiDAR measurements for a robot."""
+        num_rays = 9
+        lidar_range = 1
+        
+        pos, orn = p.getBasePositionAndOrientation(robot_id)
+        base_yaw = p.getEulerFromQuaternion(orn)[2]
+        
+        ray_from = []
+        ray_to = []
+        
+        for ray_angle in np.linspace(-np.pi/2, np.pi/2, num_rays):
+            angle = base_yaw + ray_angle
+            direction = np.array([np.cos(angle), np.sin(angle), 0])
+            ray_from.append(pos)
+            ray_to.append(pos + lidar_range * direction)
+        
+        results = p.rayTestBatch(ray_from, ray_to)
+        distances = np.array([res[2] for res in results])
+        return distances
+    
+    def _compute_reward(self):
+        """Compute the reward function."""
+        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
+        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+        
+        dist1 = np.linalg.norm(np.array(pos1[:2]) - self.goal_pos1)
+        dist2 = np.linalg.norm(np.array(pos2[:2]) - self.goal_pos2)
+        return -(dist1 + dist2)  # Negative total distance as reward
+    
+    def _is_done(self):
+        """Check if the episode is done."""
+        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
+        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+        
+        done1 = np.linalg.norm(np.array(pos1[:2]) - self.goal_pos1) < 0.1
+        done2 = np.linalg.norm(np.array(pos2[:2]) - self.goal_pos2) < 0.1
+        return done1 or done2
+    
+    def close(self):
+        """Close the simulation."""
+        p.disconnect()
