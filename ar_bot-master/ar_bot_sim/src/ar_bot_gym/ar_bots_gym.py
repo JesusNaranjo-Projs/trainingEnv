@@ -104,10 +104,11 @@ class ARBotGymEnv(gym.Env):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
         lidar2 = self._simulate_lidar(self.robot2_id)
-        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
-        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
-
-        return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2]))
+        pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
+        pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
+        pos3, _ =  p.getBasePositionAndOrientation(self.ball)
+        #gives the lidar position and orientation for each robot plus the balls position
+        return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2]))
     
     #TODO: check for accuracy
     def _simulate_lidar(self, robot_id):
