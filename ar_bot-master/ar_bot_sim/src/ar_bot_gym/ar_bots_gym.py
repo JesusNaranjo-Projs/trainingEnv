@@ -81,7 +81,7 @@ class ARBotGymEnv(gym.Env):
         
         obs = self._get_observation()
         reward = self._compute_reward()
-        done = self._is_done()
+        done, _ = self._is_done()
         info = {}
         
         return obs, reward, done, info
