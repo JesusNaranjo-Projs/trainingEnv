@@ -20,6 +20,7 @@ class ARBotGymEnv(gym.Env):
         # Action space: Each robot has [linear_velocity, angular_velocity]
         self.action_space = spaces.Box(low=np.array([-1, -1, -1, -1]), high=np.array([1, 1, 1, 1]), dtype=np.float32)
         
+        #TODO: change to add the balls position
         # Observation space: LiDAR readings + robot positions
         num_rays = 9
         self.observation_space = spaces.Box(low=0, high=1, shape=(2 * (num_rays + 2),), dtype=np.float32)
@@ -30,17 +31,17 @@ class ARBotGymEnv(gym.Env):
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("env/maps/arena/arena.urdf")
 
-        # Loads the sphere
+        # Loads the sphere above the arena drops down in the first step
         sphere_path = "env/obstacles/sphere_small.urdf"
         ball = p.loadURDF(sphere_path, [0, 0, 0.05])
         
-        # Load goals
+        # Load goals in green in gui
         self.goal_pos1 = np.array([0.0, -0.585])
         self.goal_pos2 = np.array([0.0, 0.585])
         p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
         p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
         
-        # Load robots
+        # Load robots on opposite sides
         self.start_pos1 = np.array([-0.30, 0, 0.00])
         self.start_pos2 = np.array([0.30, 0, 0.00])
         initial_orientation1 = p.getQuaternionFromEuler([0, 0, 0])
@@ -62,6 +63,8 @@ class ARBotGymEnv(gym.Env):
     
     def step(self, action):
         """Apply actions to both robots and return state, reward, done, and info."""
+
+        #TODO: tune duration 250hz rn
         duration = 250
         for _ in range(duration):
             self._apply_action(self.robot1_id, action[:2])
@@ -91,6 +94,7 @@ class ARBotGymEnv(gym.Env):
         for joint in [6, 8]:  # Right wheels
             p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
     
+    #TODO: add the position and orientation(not needed since ball) of the ball
     def _get_observation(self):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
@@ -99,6 +103,7 @@ class ARBotGymEnv(gym.Env):
         pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
         return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2]))
     
+    #TODO: check for accuracy
     def _simulate_lidar(self, robot_id):
         """Simulate LiDAR measurements for a robot."""
         num_rays = 9
@@ -120,6 +125,7 @@ class ARBotGymEnv(gym.Env):
         distances = np.array([res[2] for res in results])
         return distances
     
+    #TODO: needs to be changed with the reward function
     def _compute_reward(self):
         """Compute the reward function."""
         pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
@@ -129,6 +135,7 @@ class ARBotGymEnv(gym.Env):
         dist2 = np.linalg.norm(np.array(pos2[:2]) - self.goal_pos2)
         return -(dist1 + dist2)  # Negative total distance as reward
     
+    #TODO: needs to check if the episode is done and by which robot
     def _is_done(self):
         """Check if the episode is done."""
         pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
