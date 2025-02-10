@@ -29,7 +29,7 @@ class ARBotPybullet:
         """
         self.client = client
         self.gui = gui
-        urdf_path = "/home/jesus/catkin_ws/src/trainingEnv/anki_description/anki_description/urdf/cozmo.urdf"
+        urdf_path = "/Users/timi/Documents/GitHub/trainingEnv/anki_description/urdf/cozmo.urdf"
 
 
         self.arbot = self.client.loadURDF(
@@ -207,12 +207,12 @@ class teleoperate:
 
         self.client = bullet_client.BulletClient(p.GUI)
 
-        plane_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/maps/arena/arena.urdf"
+        plane_path = "/Users/timi/Documents/GitHub/trainingEnv/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/maps/arena/arena.urdf"
         plane = p.loadURDF(plane_path)
 	
 	#TODO
 	#turn cube into ball
-        cube_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/sphere_small.urdf"
+        cube_path = "/Users/timi/Documents/GitHub/trainingEnv/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/sphere_small.urdf"
 	
         #number_of_blocks = 1
         #for obstacle in range(number_of_blocks):
@@ -226,7 +226,7 @@ class teleoperate:
 	#TODO
 	#spawn two goals at oppsite ends of the box
 	#in the center of each side
-        goal_path = "/home/jesus/catkin_ws/src/trainingEnv/ar_bot-master/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/goal.urdf"
+        goal_path = "/Users/timi/Documents/GitHub/trainingEnv/ar_bot-master/ar_bot_sim/src/ar_bot_pybullet/env/obstacles/goal.urdf"
 	
 	#first goal
         #goal_x = self.random_generator.uniform(-0.35, 0.35)
