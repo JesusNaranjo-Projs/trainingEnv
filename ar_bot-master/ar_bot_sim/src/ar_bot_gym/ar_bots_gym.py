@@ -36,8 +36,8 @@ class ARBotGymEnv(gym.Env):
         # Load goals in green in gui
         self.goal_pos1 = np.array([0.0, -0.585])
         self.goal_pos2 = np.array([0.0, 0.585])
-        p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
-        p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
+        self.real_goal_pos1 = p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
+        self.real_goal_pos2 = p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
         
         # Load robots on opposite sides
         self.start_pos1 = np.array([-0.30, 0, 0.00])
@@ -135,12 +135,29 @@ class ARBotGymEnv(gym.Env):
     #TODO: needs to be changed with the reward function(prithvi)
     def _compute_reward(self):
         """Compute the reward function."""
-        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
-        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
-        
-        dist1 = np.linalg.norm(np.array(pos1[:2]) - self.goal_pos1)
-        dist2 = np.linalg.norm(np.array(pos2[:2]) - self.goal_pos2)
-        return -(dist1 + dist2)
+        ball, _ = p.getBasePositionAndOrientation(self.ball)
+        print("Ball position: ", ball)
+        rew1, rew2 = 0, 0
+        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
+        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
+        dist1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2]))
+        print("distance to goal post 1: ", dist1)
+        dist2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2]))
+        print("distance to goal post 2: ", dist2)
+
+        if(dist1 < 0.075):
+            rew1 = -100
+            rew2 = 100
+        elif (dist2 < 0.075):
+            rew1 = 100
+            rew2 = -100
+        else:
+            #print("Inside1")
+            #print("Distance is ", dist1)
+            rew1 = -dist1
+            rew2 = -dist2
+
+        return rew1, rew2
     
     """ Checks if the episode is done, specifically if the ball has reached either goal
         Returns a flag if epsiode is done as well as an int for each robot
