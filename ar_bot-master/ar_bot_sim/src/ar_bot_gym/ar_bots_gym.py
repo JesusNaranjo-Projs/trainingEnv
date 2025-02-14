@@ -6,12 +6,12 @@ import time
 from gym import spaces
 from pybullet_utils import bullet_client
 
-class ARBotGymEnv(gym.Env):
+class ARBotsGymEnv(gym.Env):
     """Gym environment for two ARBots in PyBullet."""
     metadata = {'render.modes': ['human', 'rgb_array']}
     
     def __init__(self, gui=True):
-        super(ARBotGymEnv, self).__init__()
+        super(ARBotsGymEnv, self).__init__()
         self.gui = gui
         self.client = bullet_client.BulletClient(p.GUI if gui else p.DIRECT)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -46,6 +46,8 @@ class ARBotGymEnv(gym.Env):
         initial_orientation2 = p.getQuaternionFromEuler([0, 0, np.pi])
         self.robot1_id = p.loadURDF("agent/cozmo.urdf", self.start_pos1, initial_orientation1)
         self.robot2_id = p.loadURDF("agent/cozmo.urdf", self.start_pos2, initial_orientation2)
+
+        self.timestep = 0
         
     def reset(self):
         """Reset the environment."""
@@ -79,10 +81,15 @@ class ARBotGymEnv(gym.Env):
             if self.gui:
                 time.sleep(1./240.)
         
+
         obs = self._get_observation()
         reward = self._compute_reward()
         done, _ = self._is_done()
         info = {}
+
+        self.timestep += 1
+        if (self.timestep >= 60):
+            done = True
         
         return obs, reward, done, info
     
@@ -136,14 +143,11 @@ class ARBotGymEnv(gym.Env):
     def _compute_reward(self):
         """Compute the reward function."""
         ball, _ = p.getBasePositionAndOrientation(self.ball)
-        print("Ball position: ", ball)
         rew1, rew2 = 0, 0
         goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
         goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
         dist1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2]))
-        print("distance to goal post 1: ", dist1)
         dist2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2]))
-        print("distance to goal post 2: ", dist2)
 
         if(dist1 < 0.075):
             rew1 = 100
@@ -157,8 +161,11 @@ class ARBotGymEnv(gym.Env):
             rew1 = -dist1
             rew2 = -dist2
 
-        print("reward for robot 1: ", rew1)
-        print("reward to robot 2: ", rew2)
+        # print("Ball position: ", ball)
+        # print("distance to goal post 1: ", dist1)
+        # print("distance to goal post 2: ", dist2)
+        # print("reward for robot 1: ", rew1)
+        # print("reward to robot 2: ", rew2)
 
         return rew1, rew2
     
@@ -174,8 +181,8 @@ class ARBotGymEnv(gym.Env):
         """Check if the episode is done."""
         ball_pos, _ = p.getBasePositionAndOrientation(self.ball)
 
-        check1 = np.linalg.norm(np.array(ball_pos[:2]) - self.goal_pos1) < 0.1
-        check2 = np.linalg.norm(np.array(ball_pos[:2]) - self.goal_pos2) < 0.1
+        check1 = np.linalg.norm(np.array(ball_pos[:2]) - self.goal_pos1) < 0.075
+        check2 = np.linalg.norm(np.array(ball_pos[:2]) - self.goal_pos2) < 0.75
 
         if(check1 or check2):
             return {True, self.last_touch}

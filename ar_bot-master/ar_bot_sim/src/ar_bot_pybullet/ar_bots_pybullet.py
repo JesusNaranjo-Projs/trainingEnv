@@ -27,7 +27,7 @@ import time
 import numpy as np
 from pybullet_utils import bullet_client
 
-class ARBotPybullet:
+class ARBotsPybullet:
     def __init__(self, client, gui, start_pos, initial_yaw=0):
         """Class to spawn in and control ARBot"""
         self.client = client
@@ -201,8 +201,8 @@ class Teleoperate:
         p.loadURDF(goal_path, [goal_y2, goal_x2, 0])
 
         # Spawn two Cozmo robots
-        self.arbot1 = ARBotPybullet(self.client, True, [-0.30, 0, 0.05], 0)
-        self.arbot2 = ARBotPybullet(self.client, True, [0.30, 0, 0.05], 180)
+        self.arbot1 = ARBotsPybullet(self.client, True, [-0.30, 0, 0.05], 0)
+        self.arbot2 = ARBotsPybullet(self.client, True, [0.30, 0, 0.05], 180)
 
         # Set simulation properties
         p.setRealTimeSimulation(1)
