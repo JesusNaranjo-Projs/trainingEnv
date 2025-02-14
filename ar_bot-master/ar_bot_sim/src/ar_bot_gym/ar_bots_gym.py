@@ -146,16 +146,19 @@ class ARBotGymEnv(gym.Env):
         print("distance to goal post 2: ", dist2)
 
         if(dist1 < 0.075):
-            rew1 = -100
-            rew2 = 100
-        elif (dist2 < 0.075):
             rew1 = 100
             rew2 = -100
+        elif (dist2 < 0.075):
+            rew1 = -100
+            rew2 = 100
         else:
             #print("Inside1")
             #print("Distance is ", dist1)
             rew1 = -dist1
             rew2 = -dist2
+
+        print("reward for robot 1: ", rew1)
+        print("reward to robot 2: ", rew2)
 
         return rew1, rew2
     
