@@ -1,9 +1,9 @@
-import gym
+import gymnasium as gym
 import pybullet as p
 import pybullet_data
 import numpy as np
 import time
-from gym import spaces
+from gymnasium import spaces
 from pybullet_utils import bullet_client
 
 class ARBotsGymEnv(gym.Env):
@@ -27,25 +27,25 @@ class ARBotsGymEnv(gym.Env):
         """Set up the PyBullet simulation."""
         p.setGravity(0, 0, -10)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.loadURDF("env/maps/arena/arena.urdf")
+        p.loadURDF("ar_bot_gym/env/maps/arena/arena.urdf")
 
         # Loads the sphere above the arena drops down in the first step
-        sphere_path = "env/obstacles/sphere_small.urdf"
+        sphere_path = "ar_bot_gym/env/obstacles/sphere_small.urdf"
         self.ball = p.loadURDF(sphere_path, [0, 0, 0.05])
         
         # Load goals in green in gui
         self.goal_pos1 = np.array([0.0, -0.585])
         self.goal_pos2 = np.array([0.0, 0.585])
-        self.real_goal_pos1 = p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
-        self.real_goal_pos2 = p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
+        self.real_goal_pos1 = p.loadURDF("ar_bot_gym/env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
+        self.real_goal_pos2 = p.loadURDF("ar_bot_gym/env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
         
         # Load robots on opposite sides
         self.start_pos1 = np.array([-0.30, 0, 0.00])
         self.start_pos2 = np.array([0.30, 0, 0.00])
         initial_orientation1 = p.getQuaternionFromEuler([0, 0, 0])
         initial_orientation2 = p.getQuaternionFromEuler([0, 0, np.pi])
-        self.robot1_id = p.loadURDF("agent/cozmo.urdf", self.start_pos1, initial_orientation1)
-        self.robot2_id = p.loadURDF("agent/cozmo.urdf", self.start_pos2, initial_orientation2)
+        self.robot1_id = p.loadURDF("ar_bot_gym/agent/cozmo.urdf", self.start_pos1, initial_orientation1)
+        self.robot2_id = p.loadURDF("ar_bot_gym/agent/cozmo.urdf", self.start_pos2, initial_orientation2)
 
         self.timestep = 0
         
@@ -53,7 +53,7 @@ class ARBotsGymEnv(gym.Env):
         """Reset the environment."""
         p.resetSimulation()
         self._setup_simulation()
-        return self._get_observation()
+        return self.get_observation()
     
     def render(self, mode='human'):
         """Render the simulation by stepping through PyBullet GUI."""
@@ -82,7 +82,7 @@ class ARBotsGymEnv(gym.Env):
                 time.sleep(1./240.)
         
 
-        obs = self._get_observation()
+        obs = self.get_observation()
         reward = self._compute_reward()
         done, _ = self._is_done()
         info = {}
@@ -107,7 +107,7 @@ class ARBotsGymEnv(gym.Env):
             p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
     
     #TODO: check if this observation space works with stable_baselines3
-    def _get_observation(self):
+    def get_observation(self):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
         lidar2 = self._simulate_lidar(self.robot2_id)
