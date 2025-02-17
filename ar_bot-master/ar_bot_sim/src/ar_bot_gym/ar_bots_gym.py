@@ -3,6 +3,7 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import time
+from typing import Optional
 from gym import spaces
 from pybullet_utils import bullet_client
 
@@ -10,9 +11,15 @@ class ARBotGymEnv(gym.Env):
     """Gym environment for two ARBots in PyBullet. (but one policy is a part of the environment)"""
     metadata = {'render.modes': ['human', 'rgb_array']}
     
-    def __init__(self, gui=True, opponent_policy=None):
+    def __init__(self, gui=True, opponent_policy=None, path = ""):
         super(ARBotGymEnv, self).__init__()
         self.gui = gui
+        self.path = path
+        
+        self.total_sum_reward_tracker = []
+        self.total_timestep_tracker = []
+        self.episode_reward_tracker = []
+        
         self.client = bullet_client.BulletClient(p.GUI if gui else p.DIRECT)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         self._setup_simulation()
@@ -21,7 +28,7 @@ class ARBotGymEnv(gym.Env):
         self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
         
         # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(32,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(36,), dtype=np.float32)
 
         # If no opponent policy is provided, use a default random policy
         if opponent_policy is None:
@@ -33,31 +40,33 @@ class ARBotGymEnv(gym.Env):
         """Set up the PyBullet simulation."""
         p.setGravity(0, 0, -10)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.loadURDF("env/maps/arena/arena.urdf")
+        p.loadURDF(self.path + "env/maps/arena/arena.urdf")
 
         # Loads the sphere above the arena drops down in the first step
-        sphere_path = "env/obstacles/sphere_small.urdf"
+        sphere_path = self.path + "env/obstacles/sphere_small.urdf"
         self.ball = p.loadURDF(sphere_path, [0, 0, 0.05])
         
         # Load goals in green in gui
         self.goal_pos1 = np.array([0.0, -0.585])
         self.goal_pos2 = np.array([0.0, 0.585])
-        self.real_goal_pos1 = p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
-        self.real_goal_pos2 = p.loadURDF("env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
+        self.real_goal_pos1 = p.loadURDF(self.path + "env/obstacles/goal.urdf", [self.goal_pos1[1], self.goal_pos1[0], 0])
+        self.real_goal_pos2 = p.loadURDF(self.path + "env/obstacles/goal.urdf", [self.goal_pos2[1], self.goal_pos2[0], 0])
         
         # Load robots on opposite sides
         self.start_pos1 = np.array([-0.30, 0, 0.00])
         self.start_pos2 = np.array([0.30, 0, 0.00])
         initial_orientation1 = p.getQuaternionFromEuler([0, 0, 0])
         initial_orientation2 = p.getQuaternionFromEuler([0, 0, np.pi])
-        self.robot1_id = p.loadURDF("agent/cozmo.urdf", self.start_pos1, initial_orientation1)
-        self.robot2_id = p.loadURDF("agent/cozmo.urdf", self.start_pos2, initial_orientation2)
+        self.robot1_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos1, initial_orientation1)
+        self.robot2_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos2, initial_orientation2)
         
-    def reset(self):
+        self.timestep = 0
+        
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         """Reset the environment."""
         p.resetSimulation()
         self._setup_simulation()
-        return self._get_observation()
+        return self._get_observation(), {}
     
     def render(self, mode='human'):
         """Render the simulation by stepping through PyBullet GUI."""
@@ -91,9 +100,16 @@ class ARBotGymEnv(gym.Env):
         obs = self._get_observation()
         reward_main, reward_opponent = self._compute_reward()
         done, _ = self._is_done()
+        truncated = False
         info = {}
         
-        return obs, reward_main, done, info
+        self.timestep += 1
+        if (self.timestep >= 60):
+            done = True
+        
+        self.episode_reward_tracker.append(reward_main)
+        
+        return obs, reward_main, done, truncated, info
     
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""
@@ -128,7 +144,7 @@ class ARBotGymEnv(gym.Env):
         ### However, if goal is not being used in computation at all, then no need to do this!
         """Return an observation for the opponent's policy.
            For simplicity, we return the same full observation here"""
-            def _get_observation(self):
+    def _get_observation(self):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
         lidar2 = self._simulate_lidar(self.robot2_id)
@@ -167,26 +183,27 @@ class ARBotGymEnv(gym.Env):
     def _compute_reward(self):
         """Compute the reward function."""
         ball, _ = p.getBasePositionAndOrientation(self.ball)
-        print("Ball position: ", ball)
         rew1, rew2 = 0, 0
         goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
         goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
         dist1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2]))
-        print("distance to goal post 1: ", dist1)
         dist2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2]))
-        print("distance to goal post 2: ", dist2)
 
         if(dist1 < 0.075):
-            rew1 = -100
-            rew2 = 100
-        elif (dist2 < 0.075):
             rew1 = 100
             rew2 = -100
+        elif (dist2 < 0.075):
+            rew1 = -100
+            rew2 = 100
         else:
-            #print("Inside1")
-            #print("Distance is ", dist1)
             rew1 = -dist1
             rew2 = -dist2
+
+        # print("Ball position: ", ball)
+        # print("distance to goal post 1: ", dist1)
+        # print("distance to goal post 2: ", dist2)
+        # print("reward for robot 1: ", rew1)
+        # print("reward to robot 2: ", rew2)
 
         return rew1, rew2
     
@@ -217,4 +234,12 @@ class ARBotGymEnv(gym.Env):
     def close(self):
         """Close the simulation."""
         p.disconnect()
+        
+    def collect_statistics(self) -> None:
+        '''
+        collect statistics function is used to record total sum and total timesteps per episode
+        '''
+        self.total_sum_reward_tracker.append(sum(self.episode_reward_tracker))
+        self.total_timestep_tracker.append(len(self.episode_reward_tracker))
 
+        self.episode_reward_tracker = []
