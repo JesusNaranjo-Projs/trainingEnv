@@ -7,21 +7,27 @@ from gym import spaces
 from pybullet_utils import bullet_client
 
 class ARBotGymEnv(gym.Env):
-    """Gym environment for two ARBots in PyBullet."""
+    """Gym environment for two ARBots in PyBullet. (but one policy is a part of the environment)"""
     metadata = {'render.modes': ['human', 'rgb_array']}
     
-    def __init__(self, gui=True):
+    def __init__(self, gui=True, opponent_policy=None):
         super(ARBotGymEnv, self).__init__()
         self.gui = gui
         self.client = bullet_client.BulletClient(p.GUI if gui else p.DIRECT)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         self._setup_simulation()
         self.last_touch = -1
-        # Action space: Each robot has [linear_velocity, angular_velocity]
-        self.action_space = spaces.Box(low=np.array([-1, -1, -1, -1]), high=np.array([1, 1, 1, 1]), dtype=np.float32)
+        # Action space: Each robot has [linear_velocity, angular_velocity] -> now only one robot
+        self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
         
         # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(32,), dtype=np.float32)
+
+        # If no opponent policy is provided, use a default random policy
+        if opponent_policy is None:
+            self.opponent_policy = self.random_opponent
+        else:
+            self.opponent_policy = opponent_policy
         
     def _setup_simulation(self):
         """Set up the PyBullet simulation."""
@@ -62,11 +68,14 @@ class ARBotGymEnv(gym.Env):
     def step(self, action):
         """Apply actions to both robots and return state, reward, done, and info."""
 
+        ## TODO: Verify that this will call agent.predict(observation)
+        opponent_action = self.opponent_policy(self._get_opponent_observation())
+
         #TODO: tune, current duration is equal to 250hz rn
         duration = 250
         for _ in range(duration):
-            self._apply_action(self.robot1_id, action[:2])
-            self._apply_action(self.robot2_id, action[2:])
+            self._apply_action(self.robot1_id, action)
+            self._apply_action(self.robot2_id, opponent_action)
             p.stepSimulation()
 
             contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
@@ -80,11 +89,11 @@ class ARBotGymEnv(gym.Env):
                 time.sleep(1./240.)
         
         obs = self._get_observation()
-        reward = self._compute_reward()
+        reward_main, reward_opponent = self._compute_reward()
         done, _ = self._is_done()
         info = {}
         
-        return obs, reward, done, info
+        return obs, reward_main, done, info
     
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""
@@ -109,7 +118,15 @@ class ARBotGymEnv(gym.Env):
         pos3, _ =  p.getBasePositionAndOrientation(self.ball)
         #gives the lidar position and orientation for each robot plus the balls position
         return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2]))
-    
+
+    def _get_opponent_observation(self):
+        ### TODO: add goals to the observation space so you can swap the goals here for making it 
+        ### simpler for action prediction. we need to add goals to the observation space instead of the hardcoded values.
+        ### However, if goal is not being used in computation at all, then no need to do this!
+        """Return an observation for the opponent's policy.
+           For simplicity, we return the same full observation here."""
+        return self._get_observation()
+
     #TODO: check for accuracy
     def _simulate_lidar(self, robot_id):
         """Simulate LiDAR measurements for a robot."""
@@ -179,6 +196,10 @@ class ARBotGymEnv(gym.Env):
         
         return {False, -1}
     
+    def random_opponent(self, observation):
+        """A simple random opponent policy."""
+        return self.action_space.sample()
+
     def close(self):
         """Close the simulation."""
         p.disconnect()
