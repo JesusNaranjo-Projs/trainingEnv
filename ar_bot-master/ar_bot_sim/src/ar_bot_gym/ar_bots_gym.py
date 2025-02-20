@@ -153,19 +153,6 @@ class ARBotGymEnv(gym.Env):
         goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
         return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
 
-    def _get_observation(self):
-        """Get LiDAR readings and robot positions for both robots."""
-        lidar1 = self._simulate_lidar(self.robot1_id)
-        lidar2 = self._simulate_lidar(self.robot2_id)
-        pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
-        pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
-        pos3, _ =  p.getBasePositionAndOrientation(self.ball)
-        #gives the lidar position and orientation for each robot plus the balls position
-        ## SWAPPED the positions
-        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
-        return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
-
     #TODO: check for accuracy
     def _simulate_lidar(self, robot_id):
         """Simulate LiDAR measurements for a robot."""
