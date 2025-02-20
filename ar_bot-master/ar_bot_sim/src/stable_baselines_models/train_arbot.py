@@ -23,6 +23,8 @@ class TrainARBot:
             :return: a tuple consisting of two lists
             '''
             random_generator = np.random.default_rng(seed)
+            
+            # opp = self.model.load("stable_baselines_models/trained_models/trash")
 
             env = self.env(gui=False, opponent_policy=None, path = "ar_bot_gym/")
 

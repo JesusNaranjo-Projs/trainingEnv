@@ -7,6 +7,13 @@ from typing import Optional
 from gym import spaces
 from pybullet_utils import bullet_client
 
+class RandomPolicy:
+    def __init__(self, action_space):
+        self.action_space = action_space
+        
+    def predict(self, observations):
+        return self.action_space.sample(), observations
+
 class ARBotGymEnv(gym.Env):
     """Gym environment for two ARBots in PyBullet. (but one policy is a part of the environment)"""
     metadata = {'render.modes': ['human', 'rgb_array']}
@@ -32,7 +39,7 @@ class ARBotGymEnv(gym.Env):
 
         # If no opponent policy is provided, use a default random policy
         if opponent_policy is None:
-            self.opponent_policy = self.random_opponent
+            self.opponent_policy = RandomPolicy(self.action_space)
         else:
             self.opponent_policy = opponent_policy
         
@@ -77,8 +84,8 @@ class ARBotGymEnv(gym.Env):
     def step(self, action):
         """Apply actions to both robots and return state, reward, done, and info."""
 
-        ## TODO: Verify that this will call agent.predict(observation)
-        opponent_action = self.opponent_policy(self._get_opponent_observation())
+        ## TODO: Verify that this will call agent.predict(observation)        
+        opponent_action, _ = self.opponent_policy.predict(self._get_opponent_observation())
 
         #TODO: tune, current duration is equal to 250hz rn
         duration = 250
@@ -137,14 +144,8 @@ class ARBotGymEnv(gym.Env):
         goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
         goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
         return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
-
+    
     def _get_opponent_observation(self):
-        ### TODO: add goals to the observation space so you can swap the goals here for making it 
-        ### simpler for action prediction. we need to add goals to the observation space instead of the hardcoded values.
-        ### However, if goal is not being used in computation at all, then no need to do this!
-        """Return an observation for the opponent's policy.
-           For simplicity, we return the same full observation here"""
-    def _get_observation(self):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
         lidar2 = self._simulate_lidar(self.robot2_id)
