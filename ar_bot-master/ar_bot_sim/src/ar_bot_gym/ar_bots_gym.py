@@ -18,7 +18,8 @@ class ARBotGymEnv(gym.Env):
     """Gym environment for two ARBots in PyBullet. (but one policy is a part of the environment)"""
     metadata = {'render.modes': ['human', 'rgb_array']}
     
-    def __init__(self, gui=True, opponent_policy=None, path = ""):
+    # def __init__(self, gui=True, opponent_policy=None, path = ""):
+    def __init__(self, gui=True, path = ""):
         super(ARBotGymEnv, self).__init__()
         self.gui = gui
         self.path = path
@@ -38,10 +39,10 @@ class ARBotGymEnv(gym.Env):
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(36,), dtype=np.float32)
 
         # If no opponent policy is provided, use a default random policy
-        if opponent_policy is None:
-            self.opponent_policy = RandomPolicy(self.action_space)
-        else:
-            self.opponent_policy = opponent_policy
+        # if opponent_policy is None:
+        #     self.opponent_policy = RandomPolicy(self.action_space)
+        # else:
+        #     self.opponent_policy = opponent_policy
         
     def _setup_simulation(self):
         """Set up the PyBullet simulation."""
@@ -81,17 +82,19 @@ class ARBotGymEnv(gym.Env):
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
     
     
-    def step(self, action):
+    def step(self, action, agent_id):
         """Apply actions to both robots and return state, reward, done, and info."""
 
         ## TODO: Verify that this will call agent.predict(observation)        
-        opponent_action, _ = self.opponent_policy.predict(self._get_opponent_observation())
+        # opponent_action, _ = self.opponent_policy.predict(self._get_opponent_observation())
 
         #TODO: tune, current duration is equal to 250hz rn
         duration = 250
         for _ in range(duration):
-            self._apply_action(self.robot1_id, action)
-            self._apply_action(self.robot2_id, opponent_action)
+            if agent_id == 1:
+                self._apply_action(self.robot1_id, action)
+            else:
+                self._apply_action(self.robot2_id, action)
             p.stepSimulation()
 
             contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
@@ -105,6 +108,7 @@ class ARBotGymEnv(gym.Env):
                 time.sleep(1./240.)
         
         obs = self._get_observation()
+        opp_obs = self._get_opponent_observation
         reward_main, reward_opponent = self._compute_reward()
         done, _ = self._is_done()
         truncated = False
@@ -116,7 +120,10 @@ class ARBotGymEnv(gym.Env):
         
         self.episode_reward_tracker.append(reward_main)
         
-        return obs, reward_main, done, truncated, info
+        if agent_id == 1:
+            return obs, reward_main, done, truncated, info
+        else:
+            return opp_obs, reward_opponent, done, truncated, info
     
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""
