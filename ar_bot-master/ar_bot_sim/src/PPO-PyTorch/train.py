@@ -87,7 +87,7 @@ def train(env_class):
     ################### checkpointing ###################
     run_num_pretrained = 0      #### change this to prevent overwriting weights in same env_name folder
 
-    directory = "PPO_preTrained"
+    directory = "trained_models"
     if not os.path.exists(directory):
           os.makedirs(directory)
 
@@ -96,8 +96,8 @@ def train(env_class):
           os.makedirs(directory)
 
 
-    checkpoint_path = directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
-    print("save checkpoint path : " + checkpoint_path)
+    checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    checkpoint_path2 = directory + "PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
     #####################################################
 
 
@@ -159,7 +159,8 @@ def train(env_class):
     print_running_reward = 0
     print_running_episodes = 0
 
-    log_running_reward = 0
+    log_running_reward1 = 0
+    log_running_reward2 = 0
     log_running_episodes = 0
 
     time_step = 0
@@ -186,46 +187,58 @@ def train(env_class):
             ppo_agent2.buffer.is_terminals.append(done)
 
             time_step +=1
-            current_ep_reward += reward
+            current_ep_reward1 += reward1
+            current_ep_reward2 += reward2
 
             # update PPO agent
             if time_step % update_timestep == 0:
-                ppo_agent.update()
+                ppo_agent1.update()
+                ppo_agent2.update()
 
             # if continuous action space; then decay action std of ouput action distribution
             if has_continuous_action_space and time_step % action_std_decay_freq == 0:
-                ppo_agent.decay_action_std(action_std_decay_rate, min_action_std)
+                ppo_agent1.decay_action_std(action_std_decay_rate, min_action_std)
+                ppo_agent2.decay_action_std(action_std_decay_rate, min_action_std)
 
             # log in logging file
             if time_step % log_freq == 0:
 
                 # log average reward till last episode
-                log_avg_reward = log_running_reward / log_running_episodes
-                log_avg_reward = round(log_avg_reward, 4)
+                log_avg_reward1 = log_running_reward1 / log_running_episodes
+                log_avg_reward2 = log_running_reward2 / log_running_episodes
+                log_avg_reward1 = round(log_avg_reward1, 4)
+                log_avg_reward2 = round(log_avg_reward2, 4)
 
-                log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward))
+                log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward1))
+                log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward2))
                 log_f.flush()
 
-                log_running_reward = 0
+                log_running_reward1 = 0
+                log_running_reward2 = 0
                 log_running_episodes = 0
 
             # printing average reward
             if time_step % print_freq == 0:
 
                 # print average reward till last episode
-                print_avg_reward = print_running_reward / print_running_episodes
-                print_avg_reward = round(print_avg_reward, 2)
+                print_avg_reward1 = print_running_reward1 / print_running_episodes
+                print_avg_reward2 = print_running_reward2 / print_running_episodes
+                print_avg_reward1 = round(print_avg_reward1, 2)
+                print_avg_reward2 = round(print_avg_reward2, 2)
 
-                print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward))
+                print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward1))
+                print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward2))
 
-                print_running_reward = 0
+                print_running_reward1 = 0
+                print_running_reward2 = 0
                 print_running_episodes = 0
 
             # save model weights
             if time_step % save_model_freq == 0:
                 print("--------------------------------------------------------------------------------------------")
-                print("saving model at : " + checkpoint_path)
-                ppo_agent.save(checkpoint_path)
+                print("saving model")
+                ppo_agent1.save(checkpoint_path1)
+                ppo_agent2.save(checkpoint_path2)
                 print("model saved")
                 print("Elapsed Time  : ", datetime.now().replace(microsecond=0) - start_time)
                 print("--------------------------------------------------------------------------------------------")
@@ -234,10 +247,12 @@ def train(env_class):
             if done:
                 break
 
-        print_running_reward += current_ep_reward
+        print_running_reward1 += current_ep_reward1
+        print_running_reward2 += current_ep_reward2
         print_running_episodes += 1
 
-        log_running_reward += current_ep_reward
+        log_running_reward1 += current_ep_reward1
+        log_running_reward2 += current_ep_reward2
         log_running_episodes += 1
 
         i_episode += 1
@@ -261,6 +276,12 @@ if __name__ == '__main__':
     
     
     
+    '''
+    WAY TO KEEP TRACK OF BETTER POLICY:
+    Save models to "curr" directory
+    Tests them using test.py and save the better one to "good" dir. The bad to "archive"
+    Query "good" for the policy to train using the next set of episodes
     
+    '''
     
     

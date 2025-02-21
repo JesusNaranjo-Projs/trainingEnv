@@ -13,7 +13,7 @@ from PPO import PPO
 
 
 #################################### Testing ###################################
-def test():
+def test(env_class):
     print("============================================================================================")
 
     ################## hyperparameters ##################
@@ -33,7 +33,7 @@ def test():
     # max_ep_len = 1500           # max timesteps in one episode
     # action_std = 0.1            # set same std for action distribution which was used while saving
 
-    env_name = "RoboschoolWalker2d-v1"
+    env_name = "ARBotGymEnv"
     has_continuous_action_space = True
     max_ep_len = 1000           # max timesteps in one episode
     action_std = 0.1            # set same std for action distribution which was used while saving
@@ -52,7 +52,7 @@ def test():
 
     #####################################################
 
-    env = gym.make(env_name)
+    env = env_class(gui=False, path="ar_bot_gym/")
 
     # state space dimension
     state_dim = env.observation_space.shape[0]
@@ -64,31 +64,37 @@ def test():
         action_dim = env.action_space.n
 
     # initialize a PPO agent
-    ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
 
     # preTrained weights directory
 
     random_seed = 0             #### set this to load a particular checkpoint trained on random seed
     run_num_pretrained = 0      #### set this to load a particular checkpoint num
 
-    directory = "PPO_preTrained" + '/' + env_name + '/'
-    checkpoint_path = directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
-    print("loading network from : " + checkpoint_path)
+    directory = "trained_models"
+    checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    checkpoint_path2 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
 
-    ppo_agent.load(checkpoint_path)
+    ppo_agent1.load(checkpoint_path1)
+    ppo_agent2.load(checkpoint_path2)
 
     print("--------------------------------------------------------------------------------------------")
 
-    test_running_reward = 0
+    test_running_reward1 = 0
+    test_running_reward2 = 0
 
     for ep in range(1, total_test_episodes+1):
         ep_reward = 0
         state, opp_state, _  = env.reset()
 
         for t in range(1, max_ep_len+1):
-            action = ppo_agent.select_action(state)
-            state, reward, done, _ = env.step(action)
-            ep_reward += reward
+            action1 = ppo_agent1.select_action(state)
+            action2 = ppo_agent2.select_action(opp_state)
+            state, reward1, done, _ = env.step(action1, 1)
+            opp_state, reward2, done, _ = env.step(action2, 2)
+            ep_reward1 += reward1
+            ep_reward2 += reward2
 
             if render:
                 env.render()
@@ -98,21 +104,30 @@ def test():
                 break
 
         # clear buffer
-        ppo_agent.buffer.clear()
+        ppo_agent1.buffer.clear()
+        ppo_agent2.buffer.clear()
 
-        test_running_reward +=  ep_reward
-        print('Episode: {} \t\t Reward: {}'.format(ep, round(ep_reward, 2)))
-        ep_reward = 0
+        test_running_reward1 +=  ep_reward1
+        test_running_reward2 +=  ep_reward2
+        print('Episode: {} \t\t Reward 1: {}'.format(ep, round(ep_reward1, 2)))
+        ep_reward1 = 0
+        print('Episode: {} \t\t Reward 2: {}'.format(ep, round(ep_reward2, 2)))
+        ep_reward2 = 0
 
     env.close()
 
     print("============================================================================================")
 
-    avg_test_reward = test_running_reward / total_test_episodes
-    avg_test_reward = round(avg_test_reward, 2)
-    print("average test reward : " + str(avg_test_reward))
+    avg_test_reward1 = test_running_reward1 / total_test_episodes
+    avg_test_reward2 = test_running_reward2 / total_test_episodes
+    avg_test_reward1 = round(avg_test_reward1, 2)
+    avg_test_reward2 = round(avg_test_reward2, 2)
+    print("average test reward 1: " + str(avg_test_reward1))
+    print("average test reward 2: " + str(avg_test_reward2))
 
     print("============================================================================================")
+
+    return avg_test_reward1, avg_test_reward2
 
 
 if __name__ == '__main__':
