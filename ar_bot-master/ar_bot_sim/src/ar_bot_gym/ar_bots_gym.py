@@ -74,7 +74,7 @@ class ARBotGymEnv(gym.Env):
         """Reset the environment."""
         p.resetSimulation()
         self._setup_simulation()
-        return self._get_observation(), {}
+        return self._get_observation(), self._get_opponent_observation(), {}
     
     def render(self, mode='human'):
         """Render the simulation by stepping through PyBullet GUI."""
@@ -111,7 +111,6 @@ class ARBotGymEnv(gym.Env):
         opp_obs = self._get_opponent_observation
         reward_main, reward_opponent = self._compute_reward()
         done, _ = self._is_done()
-        truncated = False
         info = {}
         
         self.timestep += 1
@@ -121,9 +120,9 @@ class ARBotGymEnv(gym.Env):
         self.episode_reward_tracker.append(reward_main)
         
         if agent_id == 1:
-            return obs, reward_main, done, truncated, info
+            return obs, reward_main, done, info
         else:
-            return opp_obs, reward_opponent, done, truncated, info
+            return opp_obs, reward_opponent, done, info
     
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""

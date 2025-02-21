@@ -12,11 +12,11 @@ import roboschool
 from PPO import PPO
 
 ################################### Training ###################################
-def train():
+def train(env_class):
     print("============================================================================================")
 
     ####### initialize environment hyperparameters ######
-    env_name = "RoboschoolWalker2d-v1"
+    env_name = "ARBotGymEnv"
 
     has_continuous_action_space = True  # continuous action space; else discrete
 
@@ -50,7 +50,7 @@ def train():
 
     print("training environment name : " + env_name)
 
-    env = gym.make(env_name)
+    env = env_class(gui=False, path = "ar_bot_gym/")
 
     # state space dimension
     state_dim = env.observation_space.shape[0]
@@ -142,7 +142,8 @@ def train():
     ################# training procedure ################
 
     # initialize a PPO agent
-    ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -167,18 +168,22 @@ def train():
     # training loop
     while time_step <= max_training_timesteps:
 
-        state = env.reset()
+        state, opp_state, _ = env.reset()
         current_ep_reward = 0
 
         for t in range(1, max_ep_len+1):
 
             # select action with policy
-            action = ppo_agent.select_action(state)
-            state, reward, done, _ = env.step(action)
+            action1 = ppo_agent1.select_action(state)
+            action2 = ppo_agent2.select_action(opp_state)
+            state, reward1, done, _ = env.step(action1, 1)
+            opp_state, reward2, done, _ = env.step(action2, 2)
 
             # saving reward and is_terminals
-            ppo_agent.buffer.rewards.append(reward)
-            ppo_agent.buffer.is_terminals.append(done)
+            ppo_agent1.buffer.rewards.append(reward1)
+            ppo_agent1.buffer.is_terminals.append(done)
+            ppo_agent2.buffer.rewards.append(reward2)
+            ppo_agent2.buffer.is_terminals.append(done)
 
             time_step +=1
             current_ep_reward += reward
