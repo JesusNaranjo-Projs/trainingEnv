@@ -65,21 +65,21 @@ class ARBotsGymEnv(gym.Env):
         """Apply actions to both robots and return state, reward, done, and info."""
 
         #TODO: tune, current duration is equal to 250hz rn
-        duration = 250
-        for _ in range(duration):
-            self._apply_action(self.robot1_id, action[:2])
-            self._apply_action(self.robot2_id, action[2:])
-            p.stepSimulation()
+        #duration = 250
+       
+        self._apply_action(self.robot1_id, action[:2])
+        self._apply_action(self.robot2_id, action[2:])
+        p.stepSimulation()
 
-            contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
-            contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+        contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
+        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
 
-            if contact_points1:  # If robot1 is in contact with the ball
-                self.last_touch = 1
-            elif contact_points2:  # If robot2 is in contact with the ball
-                self.last_touch = 2
-            if self.gui:
-                time.sleep(1./240.)
+        if contact_points1:  # If robot1 is in contact with the ball
+            self.last_touch = 1
+        elif contact_points2:  # If robot2 is in contact with the ball
+            self.last_touch = 2
+        if self.gui:
+            time.sleep(1./240.)
         
 
         obs = self.get_observation()
@@ -96,7 +96,7 @@ class ARBotsGymEnv(gym.Env):
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""
         linear, angular = action
-        speed = 10
+        speed = 100 #50 works too
         left_wheel_vel = (linear - angular) * speed
         right_wheel_vel = (linear + angular) * speed
         
