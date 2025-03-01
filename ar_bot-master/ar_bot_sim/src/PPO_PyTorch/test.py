@@ -72,8 +72,8 @@ def test(env_class):
     directory = "trained_models"
     directory = directory + '/' + env_name + '/'
 
-    checkpoint_path1 = directory + "/PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
-    checkpoint_path2 = directory + "/PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    checkpoint_path2 = directory + "PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
 
     ppo_agent1.load(checkpoint_path1)
     ppo_agent2.load(checkpoint_path2)
