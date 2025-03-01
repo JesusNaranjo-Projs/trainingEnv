@@ -6,10 +6,7 @@ from datetime import datetime
 import torch
 import numpy as np
 
-import gym
-import roboschool
-
-from PPO import PPO
+from PPO_PyTorch.PPO import PPO
 
 ################################### Training ###################################
 def train(env_class, model_name=None):
@@ -21,7 +18,7 @@ def train(env_class, model_name=None):
     has_continuous_action_space = True  # continuous action space; else discrete
 
     max_ep_len = 1000                   # max timesteps in one episode
-    max_training_timesteps = int(3e6)   # break training loop if timeteps > max_training_timesteps
+    max_training_timesteps = int(3e6)   # break training loop if timeteps > max_training_timesteps original: 3e6
 
     print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
     log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
@@ -50,7 +47,7 @@ def train(env_class, model_name=None):
 
     print("training environment name : " + env_name)
 
-    env = env_class(gui=False, path = "ar_bot_gym/")
+    env = env_class(gui=False, path = "ar_bot_gym/", max_timesteps=max_ep_len)
 
     # state space dimension
     state_dim = env.observation_space.shape[0]
@@ -160,7 +157,8 @@ def train(env_class, model_name=None):
     log_f.write('episode,timestep,reward\n')
 
     # printing and logging variables
-    print_running_reward = 0
+    print_running_reward1 = 0
+    print_running_reward2 = 0
     print_running_episodes = 0
 
     log_running_reward1 = 0
@@ -174,10 +172,10 @@ def train(env_class, model_name=None):
     while time_step <= max_training_timesteps:
 
         state, opp_state, _ = env.reset()
-        current_ep_reward = 0
+        current_ep_reward1 = 0
+        current_ep_reward2 = 0
 
         for t in range(1, max_ep_len+1):
-
             # select action with policy
             action1 = ppo_agent1.select_action(state)
             action2 = ppo_agent2.select_action(opp_state)
@@ -271,6 +269,13 @@ def train(env_class, model_name=None):
     print("Finished training at (GMT) : ", end_time)
     print("Total training time  : ", end_time - start_time)
     print("============================================================================================")
+    print("--------------------------------------------------------------------------------------------")
+    print("saving model")
+    ppo_agent1.save(checkpoint_path1)
+    ppo_agent2.save(checkpoint_path2)
+    print("model saved")
+    print("Elapsed Time  : ", datetime.now().replace(microsecond=0) - start_time)
+    print("--------------------------------------------------------------------------------------------")
 
 
 if __name__ == '__main__':

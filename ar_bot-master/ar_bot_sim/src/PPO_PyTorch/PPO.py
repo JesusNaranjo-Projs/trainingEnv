@@ -176,6 +176,9 @@ class PPO:
 
         if self.has_continuous_action_space:
             with torch.no_grad():
+                # print("Checking the type")
+                # print(type(state))
+                # print("****************")
                 state = torch.FloatTensor(state).to(device)
                 action, action_logprob, state_val = self.policy_old.act(state)
 

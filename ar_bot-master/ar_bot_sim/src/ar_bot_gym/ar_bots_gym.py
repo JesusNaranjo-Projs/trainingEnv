@@ -19,11 +19,12 @@ class ARBotGymEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
     
     # def __init__(self, gui=True, opponent_policy=None, path = ""):
-    def __init__(self, gui=True, path = ""):
+    def __init__(self, gui=True, path = "", max_timesteps=2000, speed=200):
         super(ARBotGymEnv, self).__init__()
         self.gui = gui
         self.path = path
-        
+        self.max_timesteps = max_timesteps
+        self.speed = speed
         self.total_sum_reward_tracker = []
         self.total_timestep_tracker = []
         self.episode_reward_tracker = []
@@ -65,6 +66,9 @@ class ARBotGymEnv(gym.Env):
         self.start_pos2 = np.array([0.30, 0, 0.00])
         initial_orientation1 = p.getQuaternionFromEuler([0, 0, 0])
         initial_orientation2 = p.getQuaternionFromEuler([0, 0, np.pi])
+        
+        # Robot 1 is at the top of the arena
+        # Robot 2 is at the bottom of the arena
         self.robot1_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos1, initial_orientation1)
         self.robot2_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos2, initial_orientation2)
         
@@ -89,32 +93,30 @@ class ARBotGymEnv(gym.Env):
         # opponent_action, _ = self.opponent_policy.predict(self._get_opponent_observation())
 
         #TODO: tune, current duration is equal to 250hz rn
-        duration = 250
-        for _ in range(duration):
-            if agent_id == 1:
-                self._apply_action(self.robot1_id, action)
-            else:
-                self._apply_action(self.robot2_id, action)
-            p.stepSimulation()
+        if agent_id == 1:
+            self._apply_action(self.robot1_id, action)
+        else:
+            self._apply_action(self.robot2_id, action)
+        p.stepSimulation()
 
-            contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
-            contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+        contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
+        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
 
-            if contact_points1:  # If robot1 is in contact with the ball
-                self.last_touch = 1
-            elif contact_points2:  # If robot2 is in contact with the ball
-                self.last_touch = 2
-            if self.gui:
-                time.sleep(1./240.)
+        if contact_points1:  # If robot1 is in contact with the ball
+            self.last_touch = 1
+        elif contact_points2:  # If robot2 is in contact with the ball
+            self.last_touch = 2
+        if self.gui:
+            time.sleep(1./240.)
         
         obs = self._get_observation()
-        opp_obs = self._get_opponent_observation
+        opp_obs = self._get_opponent_observation()
         reward_main, reward_opponent = self._compute_reward()
         done, _ = self._is_done()
         info = {}
         
         self.timestep += 1
-        if (self.timestep >= 60):
+        if (self.timestep >= self.max_timesteps):
             done = True
         
         self.episode_reward_tracker.append(reward_main)
@@ -127,7 +129,7 @@ class ARBotGymEnv(gym.Env):
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""
         linear, angular = action
-        speed = 10
+        speed = self.speed
         left_wheel_vel = (linear - angular) * speed
         right_wheel_vel = (linear + angular) * speed
         
@@ -195,16 +197,22 @@ class ARBotGymEnv(gym.Env):
         goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
         dist1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2]))
         dist2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2]))
+        
+        robot_pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
+        robot_pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+        
+        dist_to_ball1 = np.linalg.norm(np.array(ball[:2]) - np.array(robot_pos1[:2]))
+        dist_to_ball2 = np.linalg.norm(np.array(ball[:2]) - np.array(robot_pos2[:2]))
 
         if(dist1 < 0.075):
-            rew1 = 100
-            rew2 = -100
+            rew1 = self.max_timesteps * 5
+            rew2 = -self.max_timesteps * 5
         elif (dist2 < 0.075):
-            rew1 = -100
-            rew2 = 100
+            rew1 = -self.max_timesteps * 5
+            rew2 = self.max_timesteps * 5
         else:
-            rew1 = -dist1
-            rew2 = -dist2
+            rew1 = -dist1 - dist_to_ball1
+            rew2 = -dist2 - dist_to_ball2
 
         # print("Ball position: ", ball)
         # print("distance to goal post 1: ", dist1)

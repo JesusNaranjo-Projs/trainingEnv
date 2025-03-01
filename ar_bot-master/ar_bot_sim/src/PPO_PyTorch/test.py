@@ -6,10 +6,7 @@ from datetime import datetime
 import torch
 import numpy as np
 
-import gym
-import roboschool
-
-from PPO import PPO
+from PPO_PyTorch.PPO import PPO
 
 
 #################################### Testing ###################################
@@ -52,7 +49,7 @@ def test(env_class):
 
     #####################################################
 
-    env = env_class(gui=False, path="ar_bot_gym/")
+    env = env_class(gui=render, path="ar_bot_gym/", max_timesteps=max_ep_len)
 
     # state space dimension
     state_dim = env.observation_space.shape[0]
@@ -73,8 +70,10 @@ def test(env_class):
     run_num_pretrained = 0      #### set this to load a particular checkpoint num
 
     directory = "trained_models"
-    checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
-    checkpoint_path2 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    directory = directory + '/' + env_name + '/'
+
+    checkpoint_path1 = directory + "/PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    checkpoint_path2 = directory + "/PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
 
     ppo_agent1.load(checkpoint_path1)
     ppo_agent2.load(checkpoint_path2)
@@ -85,7 +84,8 @@ def test(env_class):
     test_running_reward2 = 0
 
     for ep in range(1, total_test_episodes+1):
-        ep_reward = 0
+        ep_reward1 = 0
+        ep_reward2 = 0
         state, opp_state, _  = env.reset()
 
         for t in range(1, max_ep_len+1):
