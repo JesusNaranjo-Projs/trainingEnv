@@ -12,7 +12,7 @@ import roboschool
 from PPO import PPO
 
 ################################### Training ###################################
-def train(env_class):
+def train(env_class, model_name=None):
     print("============================================================================================")
 
     ####### initialize environment hyperparameters ######
@@ -142,8 +142,12 @@ def train(env_class):
     ################# training procedure ################
 
     # initialize a PPO agent
-    ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
-    ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    if model_name == None:
+        ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+        ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    else:
+        ppo_agent1 = PPO.load(model_name, checkpoint_path1)
+        ppo_agent2 = PPO.load(model_name, checkpoint_path2)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
