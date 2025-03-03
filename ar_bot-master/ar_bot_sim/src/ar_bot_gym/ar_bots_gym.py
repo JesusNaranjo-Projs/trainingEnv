@@ -204,15 +204,15 @@ class ARBotGymEnv(gym.Env):
         dist_to_ball1 = np.linalg.norm(np.array(ball[:2]) - np.array(robot_pos1[:2]))
         dist_to_ball2 = np.linalg.norm(np.array(ball[:2]) - np.array(robot_pos2[:2]))
 
-        if(dist1 < 0.075):
+        if (dist1 < 0.075):
             rew1 = self.max_timesteps * 5
             rew2 = -self.max_timesteps * 5
         elif (dist2 < 0.075):
             rew1 = -self.max_timesteps * 5
             rew2 = self.max_timesteps * 5
         else:
-            rew1 = -dist1 - dist_to_ball1
-            rew2 = -dist2 - dist_to_ball2
+            rew1 = -dist1 * 2 - dist_to_ball1
+            rew2 = -dist2 * 2 - dist_to_ball2
 
         # print("Ball position: ", ball)
         # print("distance to goal post 1: ", dist1)
@@ -232,10 +232,13 @@ class ARBotGymEnv(gym.Env):
     """
     def _is_done(self):
         """Check if the episode is done."""
-        ball_pos, _ = p.getBasePositionAndOrientation(self.ball)
+        ball, _ = p.getBasePositionAndOrientation(self.ball)
 
-        check1 = np.linalg.norm(np.array(ball_pos[:2]) - self.goal_pos1) < 0.1
-        check2 = np.linalg.norm(np.array(ball_pos[:2]) - self.goal_pos2) < 0.1
+        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
+        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
+
+        check1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2])) < 0.075
+        check2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2])) < 0.075
 
         if(check1 or check2):
             return {True, self.last_touch}
