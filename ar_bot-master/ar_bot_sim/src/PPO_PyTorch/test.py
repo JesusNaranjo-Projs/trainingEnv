@@ -86,13 +86,12 @@ def test(env_class):
     for ep in range(1, total_test_episodes+1):
         ep_reward1 = 0
         ep_reward2 = 0
-        state, opp_state, _  = env.reset()
+        state, _, _  = env.reset()
 
         for t in range(1, max_ep_len+1):
             action1 = ppo_agent1.select_action(state)
-            action2 = ppo_agent2.select_action(opp_state)
-            state, reward1, done, _ = env.step(action1, 1)
-            opp_state, reward2, done, _ = env.step(action2, 2)
+            action2 = ppo_agent2.select_action(state)
+            state, reward1, reward2, done, _ = env.step_both(action1, action2)
             ep_reward1 += reward1
             ep_reward2 += reward2
 

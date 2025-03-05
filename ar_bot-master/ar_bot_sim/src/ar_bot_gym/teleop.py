@@ -92,7 +92,7 @@ try:
             writer = csv.writer(csv_file)
             writer.writerow([episode, obs, action, agent_id])
 
-        obs, reward, done, info = env.step(action)
+        obs, reward, done, info = env.step(action, agent_id)
 
         # Optional: Print reward and observation
         #print(f"Reward: {reward}, Done: {done}")
@@ -101,7 +101,7 @@ try:
             episode += 1
             done += 1
             print("Episode done")
-            #obs = env.reset()
+            obs = env.reset()
         
         time.sleep(1./60.)  # Maintain a stable refresh rate
 

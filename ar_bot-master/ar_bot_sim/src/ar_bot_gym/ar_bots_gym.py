@@ -37,13 +37,8 @@ class ARBotGymEnv(gym.Env):
         self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
         
         # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
+        # 
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(36,), dtype=np.float32)
-
-        # If no opponent policy is provided, use a default random policy
-        # if opponent_policy is None:
-        #     self.opponent_policy = RandomPolicy(self.action_space)
-        # else:
-        #     self.opponent_policy = opponent_policy
         
     def _setup_simulation(self):
         """Set up the PyBullet simulation."""
@@ -78,7 +73,8 @@ class ARBotGymEnv(gym.Env):
         """Reset the environment."""
         p.resetSimulation()
         self._setup_simulation()
-        return self._get_observation(), self._get_opponent_observation(), {}
+        obs = self._get_observation()
+        return obs, obs, {}
     
     def render(self, mode='human'):
         """Render the simulation by stepping through PyBullet GUI."""
@@ -88,10 +84,6 @@ class ARBotGymEnv(gym.Env):
     
     def step(self, action, agent_id):
         """Apply actions to both robots and return state, reward, done, and info."""
-
-        ## TODO: Verify that this will call agent.predict(observation)        
-        # opponent_action, _ = self.opponent_policy.predict(self._get_opponent_observation())
-
         #TODO: tune, current duration is equal to 250hz rn
         if agent_id == 1:
             self._apply_action(self.robot1_id, action)
@@ -110,21 +102,47 @@ class ARBotGymEnv(gym.Env):
             time.sleep(1./240.)
         
         obs = self._get_observation()
-        opp_obs = self._get_opponent_observation()
-        reward_main, reward_opponent = self._compute_reward()
-        done, _ = self._is_done()
+        # opp_obs = self._get_opponent_observation()
+        reward_main, reward_opponent = self._compute_reward(obs)
+        done, _ = self._is_done(obs)
         info = {}
         
         self.timestep += 1
         if (self.timestep >= self.max_timesteps):
             done = True
         
-        self.episode_reward_tracker.append(reward_main)
-        
         if agent_id == 1:
             return obs, reward_main, done, info
         else:
-            return opp_obs, reward_opponent, done, info
+            return obs, reward_opponent, done, info
+    
+    def step_both(self, action1, action2):
+        """Apply actions to both robots and return state, reward, done, and info."""
+        self._apply_action(self.robot1_id, action1)
+        self._apply_action(self.robot2_id, action2)
+        p.stepSimulation()
+
+        contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
+        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+
+        if contact_points1:  # If robot1 is in contact with the ball
+            self.last_touch = 1
+        elif contact_points2:  # If robot2 is in contact with the ball
+            self.last_touch = 2
+        if self.gui:
+            time.sleep(1./240.)
+        
+        obs = self._get_observation()
+        # opp_obs = self._get_opponent_observation()
+        reward_main, reward_opponent = self._compute_reward(obs)
+        done, _ = self._is_done(obs)
+        info = {}
+        
+        self.timestep += 1
+        if (self.timestep >= self.max_timesteps):
+            done = True
+        
+        return obs, reward_main, reward_opponent, done, info
     
     def _apply_action(self, robot_id, action):
         """Apply motion commands to a robot."""
@@ -138,8 +156,7 @@ class ARBotGymEnv(gym.Env):
         
         for joint in [6, 8]:  # Right wheels
             p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
-    
-    #TODO: check if this observation space works with stable_baselines3; add the goal postiions
+
     def _get_observation(self):
         """Get LiDAR readings and robot positions for both robots."""
         lidar1 = self._simulate_lidar(self.robot1_id)
@@ -151,6 +168,8 @@ class ARBotGymEnv(gym.Env):
         
         goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
         goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
+
+        # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
         return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
     
     def _get_opponent_observation(self):
@@ -189,20 +208,21 @@ class ARBotGymEnv(gym.Env):
         return distances
     
     #TODO: needs to be changed with the reward function(prithvi)
-    def _compute_reward(self):
+    def _compute_reward(self, obs):
         """Compute the reward function."""
-        ball, _ = p.getBasePositionAndOrientation(self.ball)
+        # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
+        ball = obs[30:32]
         rew1, rew2 = 0, 0
-        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
-        dist1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2]))
-        dist2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2]))
+        goal_pos1 = obs[32:34]
+        goal_pos2 = obs[34:36]
+        dist1 = np.linalg.norm(ball - goal_pos1)
+        dist2 = np.linalg.norm(ball - goal_pos2)
         
-        robot_pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
-        robot_pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+        robot_pos1 = obs[9:11]
+        robot_pos2 = obs[24:26]
         
-        dist_to_ball1 = np.linalg.norm(np.array(ball[:2]) - np.array(robot_pos1[:2]))
-        dist_to_ball2 = np.linalg.norm(np.array(ball[:2]) - np.array(robot_pos2[:2]))
+        dist_to_ball1 = np.linalg.norm(ball - robot_pos1)
+        dist_to_ball2 = np.linalg.norm(ball - robot_pos2)
 
         if (dist1 < 0.075):
             rew1 = self.max_timesteps * 5
@@ -230,20 +250,20 @@ class ARBotGymEnv(gym.Env):
 
         TODO: Need to end epsiode after a specific number of times steps       
     """
-    def _is_done(self):
+    def _is_done(self, obs):
         """Check if the episode is done."""
-        ball, _ = p.getBasePositionAndOrientation(self.ball)
+        ball = obs[30:32]
 
-        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
+        goal_pos1 = obs[32:34]
+        goal_pos2 = obs[34:36]
 
-        check1 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos1[:2])) < 0.075
-        check2 = np.linalg.norm(np.array(ball[:2]) - np.array(goal_pos2[:2])) < 0.075
+        check1 = np.linalg.norm(ball - goal_pos1) < 0.075
+        check2 = np.linalg.norm(ball - goal_pos2) < 0.075
 
-        if(check1 or check2):
-            return {True, self.last_touch}
+        if (check1 or check2):
+            return True, self.last_touch
         
-        return {False, -1}
+        return False, -1
     
     def random_opponent(self, observation):
         """A simple random opponent policy."""
