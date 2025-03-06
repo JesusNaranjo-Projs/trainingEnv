@@ -18,4 +18,7 @@ if not os.path.exists(args.path):
     sys.stderr.write("ERROR: given path does not exist\n")
     sys.exit(1)
 
+if args.path[-1] == "/":
+    args.path = args.path[:-1]
+
 test(ARBotGymEnv, model_name=args.name, path=args.path)
