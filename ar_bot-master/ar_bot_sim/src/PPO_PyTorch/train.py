@@ -9,7 +9,7 @@ import numpy as np
 from PPO_PyTorch.PPO import PPO
 
 ################################### Training ###################################
-def train(env_class, model_name=""):
+def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_training_timesteps=None):
     print("============================================================================================")
 
     ####### initialize environment hyperparameters ######
@@ -17,8 +17,10 @@ def train(env_class, model_name=""):
 
     has_continuous_action_space = True  # continuous action space; else discrete
 
-    max_ep_len = 1000                   # max timesteps in one episode
-    max_training_timesteps = int(1000)   # break training loop if timeteps > max_training_timesteps original: 3e6
+    # Set optional arguments to default if None is given
+    continuation = False if continuation is None else continuation
+    max_ep_len = 2000 if max_ep_len is None else max_ep_len
+    max_training_timesteps = int(3e6) if max_training_timesteps is None else max_training_timesteps
 
     print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
     log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
@@ -65,7 +67,7 @@ def train(env_class, model_name=""):
     if not os.path.exists(log_dir):
           os.makedirs(log_dir)
 
-    log_dir = log_dir + '/' + env_name + model_name + '/'
+    log_dir = log_dir + '/' + env_name + '/'
     if not os.path.exists(log_dir):
           os.makedirs(log_dir)
 
@@ -88,13 +90,16 @@ def train(env_class, model_name=""):
     if not os.path.exists(directory):
           os.makedirs(directory)
 
-    directory = directory + '/' + env_name + model_name + '/'
+    directory = directory + '/' + env_name  + '/'
     if not os.path.exists(directory):
           os.makedirs(directory)
 
-
-    checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
-    checkpoint_path2 = directory + "PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    if model_name == None:
+        checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+        checkpoint_path2 = directory + "PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    else:
+        checkpoint_path1 = directory + "1" + model_name
+        checkpoint_path2 = directory + "2" + model_name
     #####################################################
 
 
@@ -141,6 +146,10 @@ def train(env_class, model_name=""):
     # initialize a PPO agent
     ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
     ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+
+    if (continuation):
+        ppo_agent1.load(checkpoint_path1)
+        ppo_agent2.load(checkpoint_path2)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)

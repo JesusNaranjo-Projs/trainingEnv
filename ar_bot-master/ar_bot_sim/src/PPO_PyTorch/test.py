@@ -10,7 +10,7 @@ from PPO_PyTorch.PPO import PPO
 
 
 #################################### Testing ###################################
-def test(env_class):
+def test(env_class, model_name=None, path=None):
     print("============================================================================================")
 
     ################## hyperparameters ##################
@@ -69,11 +69,18 @@ def test(env_class):
     random_seed = 0             #### set this to load a particular checkpoint trained on random seed
     run_num_pretrained = 0      #### set this to load a particular checkpoint num
 
-    directory = "trained_models"
-    directory = directory + '/' + env_name + '/'
+    if path == None:
+        directory = "trained_models"
+        directory = directory + '/' + env_name + '/'
+    else:
+        directory = path + "/"
 
-    checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
-    checkpoint_path2 = directory + "PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    if model_name == None:
+        checkpoint_path1 = directory + "PPO1_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+        checkpoint_path2 = directory + "PPO2_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    else:
+        checkpoint_path1 = directory + "1" + model_name
+        checkpoint_path2 = directory + "2" + model_name
 
     ppo_agent1.load(checkpoint_path1)
     ppo_agent2.load(checkpoint_path2)
