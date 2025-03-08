@@ -3,6 +3,7 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import time
+import math
 from typing import Optional
 from gym import spaces
 from pybullet_utils import bullet_client
@@ -66,6 +67,9 @@ class ARBotGymEnv(gym.Env):
         # Robot 2 is at the bottom of the arena
         self.robot1_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos1, initial_orientation1)
         self.robot2_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos2, initial_orientation2)
+
+        self.robot1_dist_to_ball = 0.30
+        self.robot2_dist_to_ball = 0.30
         
         self.timestep = 0
         
@@ -206,6 +210,36 @@ class ARBotGymEnv(gym.Env):
         results = p.rayTestBatch(ray_from, ray_to)
         distances = np.array([res[2] for res in results])
         return distances
+
+    def _check_ball_in_FOV(self, obs, robot_id):
+        # 11-14 are orient of robot1, 26-29 are orient of robot2
+        ball = obs[30:32]
+        if robot_id == 1:
+            orient = p.getEulerFromQuaternion(obs[11:15])[2]
+            robot_pos = obs[9:11]
+        elif robot_id == 2:
+            orient = p.getEulerFromQuaternion(obs[26:30])[2]
+            robot_pos = obs[24:26]
+        else:
+            return False
+
+        # Calculate angle to ball (this is the orientation that the robot
+        # would need to be facing head on). Change range to 0 - 2pi for all positive
+        ang = -math.atan2(robot_pos[1] - ball[1], -(robot_pos[0] - ball[0])) + math.pi
+        lower = ang - math.pi / 6
+        upper = ang + math.pi / 6
+        orient = orient + math.pi
+
+        # Need to account for case where bound wraps around max/min allowed
+        if upper > math.pi * 2:
+            upper = upper - math.pi * 2
+            return orient < upper or orient > lower
+            
+        if lower < 0:
+            lower = math.pi * 2 - lower
+            return orient > lower or orient < upper
+
+        return orient > lower and orient < upper
     
     #TODO: needs to be changed with the reward function(prithvi)
     def _compute_reward(self, obs):
@@ -224,6 +258,9 @@ class ARBotGymEnv(gym.Env):
         dist_to_ball1 = np.linalg.norm(ball - robot_pos1)
         dist_to_ball2 = np.linalg.norm(ball - robot_pos2)
 
+        moving_towards1 = (round(dist_to_ball1, 4) - round(self.robot1_dist_to_ball, 4)) < 0
+        moving_towards2 = (round(dist_to_ball2, 4) - round(self.robot2_dist_to_ball, 4)) < 0
+
         if (dist1 < 0.075):
             rew1 = self.max_timesteps * 5
             rew2 = -self.max_timesteps * 5
@@ -231,14 +268,22 @@ class ARBotGymEnv(gym.Env):
             rew1 = -self.max_timesteps * 5
             rew2 = self.max_timesteps * 5
         else:
-            rew1 = -dist1 * 2 - dist_to_ball1
-            rew2 = -dist2 * 2 - dist_to_ball2
+            if moving_towards1 and self._check_ball_in_FOV(obs, 1):
+                # Check for ball in narrow FOV
+                rew1 = 1
+            else:
+                rew1 = -dist1
+            if moving_towards2 and self._check_ball_in_FOV(obs, 2):
+                # check for ball in narrow FOV
+                rew2 = 1
+            else:
+                rew2 = -dist2
+            
+            # rew1 = -dist1 * 2 - dist_to_ball1
+            # rew2 = -dist2 * 2 - dist_to_ball2
 
-        # print("Ball position: ", ball)
-        # print("distance to goal post 1: ", dist1)
-        # print("distance to goal post 2: ", dist2)
-        # print("reward for robot 1: ", rew1)
-        # print("reward to robot 2: ", rew2)
+        self.robot1_dist_to_ball = dist_to_ball1
+        self.robot2_dist_to_ball = dist_to_ball2
 
         return rew1, rew2
     
