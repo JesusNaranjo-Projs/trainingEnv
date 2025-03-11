@@ -20,7 +20,7 @@ class ARBotGymEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
     
     # def __init__(self, gui=True, opponent_policy=None, path = ""):
-    def __init__(self, gui=True, path = "", max_timesteps=2000, speed=200):
+    def __init__(self, gui=True, path = "", max_timesteps=1500, speed=200):
         super(ARBotGymEnv, self).__init__()
         self.gui = gui
         self.path = path
@@ -226,20 +226,39 @@ class ARBotGymEnv(gym.Env):
         # Calculate angle to ball (this is the orientation that the robot
         # would need to be facing head on). Change range to 0 - 2pi for all positive
         ang = -math.atan2(robot_pos[1] - ball[1], -(robot_pos[0] - ball[0])) + math.pi
-        lower = ang - math.pi / 6
-        upper = ang + math.pi / 6
         orient = orient + math.pi
 
         # Need to account for case where bound wraps around max/min allowed
-        if upper > math.pi * 2:
-            upper = upper - math.pi * 2
-            return orient < upper or orient > lower
-            
-        if lower < 0:
-            lower = math.pi * 2 - lower
-            return orient > lower or orient < upper
+        diff = abs(ang - orient)
 
-        return orient > lower and orient < upper
+        return orient > math.pi / 6, diff
+
+    # Check if the ball is looking at one of the corners while being close to
+    # it.
+    def _check_corners(self, obs, robot_id):
+        # 11-14 are orient of robot1, 26-29 are orient of robot2
+        if robot_id == 1:
+            orient = p.getEulerFromQuaternion(obs[11:15])[2]
+            robot_pos = obs[9:11]
+        elif robot_id == 2:
+            orient = p.getEulerFromQuaternion(obs[26:30])[2]
+            robot_pos = obs[24:26]
+        else:
+            return False
+
+        corners = [np.array((0.635, 0.385)), np.array((0.635, -0.385)),
+                   np.array((-0.635, 0.385)), np.array((-0.635, -0.385))]
+        orient = orient + math.pi
+
+        for corner in corners:
+            ang = -math.atan2(robot_pos[1] - corner[1], -(robot_pos[0] - corner[0])) + math.pi
+            dist = np.linalg.norm(robot_pos - corner)
+            
+            if abs(ang - orient) <= math.pi / 6 and dist < 0.5:
+                return False
+            
+        return True
+            
     
     #TODO: needs to be changed with the reward function(prithvi)
     def _compute_reward(self, obs):
@@ -257,33 +276,73 @@ class ARBotGymEnv(gym.Env):
         
         dist_to_ball1 = np.linalg.norm(ball - robot_pos1)
         dist_to_ball2 = np.linalg.norm(ball - robot_pos2)
+        
+        diff1 = round(dist_to_ball1, 4) - round(self.robot1_dist_to_ball, 4)
+        diff2 = round(dist_to_ball2, 4) - round(self.robot2_dist_to_ball, 4)
 
-        moving_towards1 = (round(dist_to_ball1, 4) - round(self.robot1_dist_to_ball, 4)) < 0
-        moving_towards2 = (round(dist_to_ball2, 4) - round(self.robot2_dist_to_ball, 4)) < 0
+        moving_towards1 = diff1 < 0 and -diff1 > 0.0002
+        moving_towards2 = diff2 < 0 and -diff2 > 0.0002
 
         if (dist1 < 0.075):
-            rew1 = self.max_timesteps * 5
-            rew2 = -self.max_timesteps * 5
+            rew1 = self.max_timesteps
+            rew2 = -self.max_timesteps
         elif (dist2 < 0.075):
-            rew1 = -self.max_timesteps * 5
-            rew2 = self.max_timesteps * 5
+            rew1 = -self.max_timesteps
+            rew2 = self.max_timesteps
         else:
-            if moving_towards1 and self._check_ball_in_FOV(obs, 1):
+            fov1, ang_diff1 = self._check_ball_in_FOV(obs, 1)
+            fov2, ang_diff2 = self._check_ball_in_FOV(obs, 2)
+            if moving_towards1 and fov1 and self._check_corners(obs, 1):
                 # Check for ball in narrow FOV
-                rew1 = 1
+                if self._check_corners(obs, 1):
+                    rew1 = 5 - dist1
+                else:
+                    rew1 = -dist1 * 2 * math.pi
+            elif moving_towards1:
+                rew1 = -ang_diff1
+            elif fov1:
+                rew1 = -dist1 * 2 * math.pi
             else:
-                rew1 = -dist1
-            if moving_towards2 and self._check_ball_in_FOV(obs, 2):
-                # check for ball in narrow FOV
-                rew2 = 1
-            else:
-                rew2 = -dist2
+                rew1 = -dist1 * 2 * math.pi - ang_diff1
             
-            # rew1 = -dist1 * 2 - dist_to_ball1
-            # rew2 = -dist2 * 2 - dist_to_ball2
+            if moving_towards2 and fov2 and self._check_corners(obs, 2):
+                # check for ball in narrow FOV
+                if self._check_corners(obs, 2):
+                    rew2 = 5 - dist2
+                else:
+                    rew2 = -dist2 * 2 * math.pi
+            elif moving_towards2:
+                rew2 = -ang_diff2
+            elif fov2:
+                rew2 = -dist2 * 2 * math.pi
+            else:
+                rew2 = -dist2 * 2 * math.pi - ang_diff2
 
         self.robot1_dist_to_ball = dist_to_ball1
         self.robot2_dist_to_ball = dist_to_ball2
+
+        return rew1, rew2
+
+    #TODO: needs to be changed with the reward function(prithvi)
+    def _compute_reward_simple(self, obs):
+        """Compute the reward function."""
+        # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
+        ball = obs[30:32]
+        rew1, rew2 = 0, 0
+        goal_pos1 = obs[32:34]
+        goal_pos2 = obs[34:36]
+        dist1 = np.linalg.norm(ball - goal_pos1)
+        dist2 = np.linalg.norm(ball - goal_pos2)
+        
+        if (dist1 < 0.075):
+            rew1 = self.max_timesteps / 100
+            rew2 = -self.max_timesteps / 100
+        elif (dist2 < 0.075):
+            rew1 = -self.max_timesteps / 100
+            rew2 = self.max_timesteps / 100
+        else:
+            rew1 = -0.01
+            rew2 = -0.01
 
         return rew1, rew2
     
