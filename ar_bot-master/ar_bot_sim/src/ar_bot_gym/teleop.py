@@ -46,14 +46,14 @@ def get_keyboard_action():
             robotOne = False
             action2 += np.array([lin, ang], dtype=np.float32)  # Accumulate movements
     
-    if robotOne:
-        action = action1
-        signal = 1 
-    else:
-        action = action2
-        signal = 0
+    # if robotOne:
+    #     action = action1
+    #     signal = 1 
+    # else:
+    #     action = action2
+    #     signal = 0
 
-    return action, signal # Combine both robots' actions
+    return action1, action2 # Combine both robots' actions
 
     # """Reads keyboard input and converts it into actions for both robots."""
     # p.configureDebugVisualizer(p.COV_ENABLE_KEYBOARD_SHORTCUTS, 0)
@@ -74,25 +74,24 @@ def get_keyboard_action():
     #         print("Action 2: ", action2)
 
     # return np.hstack((action1, action2))  # Combine both robots' actions
-csv_file = open("trajectories.csv", "w")
 
 with open("trajectories.csv", "w", newline="") as csv_file:
     writer = csv.writer(csv_file)
-    writer.writerow(["Episode", "Observation", "Action", "robot"])
+    writer.writerow(["Episode", "Observation", "Action1", "Action2"])
 
 episode = 0
 done = 0
 try:
-    obs = env.reset()
+    obs, _, _ = env.reset()
     while done != 5:
         
-        action, agent_id = get_keyboard_action()
+        action1, action2 = get_keyboard_action()
         #print("Action: ", action)
         with open("trajectories.csv", mode="a", newline="") as csv_file:
             writer = csv.writer(csv_file)
-            writer.writerow([episode, obs, action, agent_id])
+            writer.writerow([episode, obs, action1, action2])
 
-        obs, reward, done, info = env.step(action, agent_id)
+        obs, reward, done, info = env.step(action1, action2)
 
         # Optional: Print reward and observation
         #print(f"Reward: {reward}, Done: {done}")
@@ -101,7 +100,7 @@ try:
             episode += 1
             done += 1
             print("Episode done")
-            obs = env.reset()
+            obs, _, _ = env.reset()
         
         time.sleep(1./60.)  # Maintain a stable refresh rate
 
