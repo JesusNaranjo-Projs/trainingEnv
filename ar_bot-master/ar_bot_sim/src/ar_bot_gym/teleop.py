@@ -75,23 +75,23 @@ def get_keyboard_action():
 
     # return np.hstack((action1, action2))  # Combine both robots' actions
 
+obs, _, _ = env.reset()
 with open("trajectories.csv", "w", newline="") as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Episode", "Observation", "Action1", "Action2"])
+    writer.writerow([0, obs, "[0. 0.]", "[0. 0.]"])
 
 episode = 0
 done = 0
-try:
-    obs, _, _ = env.reset()
+try:    
     while done != 5:
-        
+        # Take action first so obs that is stored is state after actions are taken
         action1, action2 = get_keyboard_action()
+        obs, reward, reward_opp, done, info = env.step_both(action1, action2)
         #print("Action: ", action)
         with open("trajectories.csv", mode="a", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow([episode, obs, action1, action2])
-
-        obs, reward, done, info = env.step(action1, action2)
 
         # Optional: Print reward and observation
         #print(f"Reward: {reward}, Done: {done}")
@@ -101,6 +101,9 @@ try:
             done += 1
             print("Episode done")
             obs, _, _ = env.reset()
+            with open("trajectories.csv", mode="a", newline="") as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow([episode, obs, "[0. 0.]", "[0. 0.]"])
         
         time.sleep(1./60.)  # Maintain a stable refresh rate
 

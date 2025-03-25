@@ -2,6 +2,7 @@ import os
 import glob
 import time
 from datetime import datetime
+import csv
 
 import torch
 import numpy as np
@@ -9,7 +10,7 @@ import numpy as np
 from PPO_PyTorch.PPO import PPO
 
 ################################### Training ###################################
-def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_training_timesteps=None):
+def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_training_timesteps=None, pretrain=None):
     print("============================================================================================")
 
     ####### initialize environment hyperparameters ######
@@ -21,6 +22,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     continuation = False if continuation is None else continuation
     max_ep_len = 2000 if max_ep_len is None else max_ep_len
     max_training_timesteps = int(3e6) if max_training_timesteps is None else max_training_timesteps
+    pretrain = False if pretrain is None else pretrain
+    
+    pretrain_episodes = 10
 
     print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
     log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
@@ -156,6 +160,47 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     print("Started training at (GMT) : ", start_time)
 
     print("============================================================================================")
+    
+    i_episode = 0
+    
+    if pretrain:
+        with open("trajectories.csv", "r", newline="") as csv_file:
+            reader = csv.DictReader(csv_file)
+        
+            for row in reader:
+                # Parse csv to get episode #, obs, and actions 
+                ep = int(row["Episode"])
+                obs = row["Observation"]# Stored as string need as numpy.ndarray
+                action1 = row["Action1"]# Stored as string need as numpy.ndarray
+                action2 = row["Action2"]# Stored as string need as numpy.ndarray
+                
+                # Change strings to proper np.ndarray
+                obs = np.fromstring(obs[2:-1], sep="  ")
+                action1 = np.fromstring(action1[1:-1], sep=" ")
+                action2 = np.fromstring(action2[1:-1], sep=" ")
+                
+                # Take the actions in the PPO algo
+                ppo_agent1.take_action(obs, action1)
+                ppo_agent2.take_action(obs, action2)
+                
+                # Compute the reward that would occur given the actions
+                reward1, reward2 = env._compute_reward_simple(obs)
+                done, _ = env._is_done(obs)
+
+                # saving reward and is_terminals
+                ppo_agent1.buffer.rewards.append(reward1)
+                ppo_agent1.buffer.is_terminals.append(done)
+                ppo_agent2.buffer.rewards.append(reward2)
+                ppo_agent2.buffer.is_terminals.append(done)
+
+                # Update PPO agent after episode finished
+                if done:
+                    ppo_agent1.update()
+                    ppo_agent2.update()
+            
+        ppo_agent1.save(checkpoint_path1)
+        ppo_agent2.save(checkpoint_path2)
+        print("Finished pretraining")
 
     # logging file
     log_f = open(log_f_name,"w+")
@@ -185,8 +230,6 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
             action1 = ppo_agent1.select_action(state)
             action2 = ppo_agent2.select_action(state)
             state, reward1, reward2, done, _ = env.step_both(action1, action2)
-            # state, reward1, done, _ = env.step(action1, 1)
-            # state, reward2, done, _ = env.step(action2, 2)
 
             # saving reward and is_terminals
             ppo_agent1.buffer.rewards.append(reward1)
@@ -285,18 +328,4 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
 
 if __name__ == '__main__':
-
     train()
-    
-    
-    
-    
-    '''
-    WAY TO KEEP TRACK OF BETTER POLICY:
-    Save models to "curr" directory
-    Tests them using test.py and save the better one to "good" dir. The bad to "archive"
-    Query "good" for the policy to train using the next set of episodes
-    
-    '''
-    
-    

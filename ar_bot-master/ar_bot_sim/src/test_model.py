@@ -14,7 +14,7 @@ if (args.name != None and args.name[-4:] != ".pth"):
     sys.stderr.write("ERROR: all model names must end with the .pth suffix\n")
     sys.exit(1)
 
-if args.name != None and not os.path.exists(args.path):
+if args.path != None and not os.path.exists(args.path):
     sys.stderr.write("ERROR: given path does not exist\n")
     sys.exit(1)
 

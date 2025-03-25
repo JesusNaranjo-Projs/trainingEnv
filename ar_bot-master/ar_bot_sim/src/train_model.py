@@ -8,6 +8,7 @@ parser.add_argument("-n", "--name")
 parser.add_argument("-c", "--cont", action="store_true")
 parser.add_argument("-mt", "--maxTime", type=int)
 parser.add_argument("-me", "--maxEp", type=int)
+parser.add_argument("-p", "--pretrain", action="store_true")
 
 args = parser.parse_args()
 
@@ -19,8 +20,5 @@ if (args.name != None and args.name[-4:] != ".pth"):
     sys.stderr.write("ERROR: all model names must end with the .pth suffix\n")
     sys.exit(1)
 
-train(ARBotGymEnv, continuation=args.cont, model_name=args.name, max_ep_len=args.maxEp, max_training_timesteps=args.maxTime)
+train(ARBotGymEnv, continuation=args.cont, model_name=args.name, max_ep_len=args.maxEp, max_training_timesteps=args.maxTime, pretrain=args.pretrain)
 
-# ssh capstone-2025@mulip-server.eecs.tufts.edu "cd ar_bot-master/ar_bot_sim/src/; python3 train_model.py -n fov.pth > /dev/null 2>&1 < /dev/null &"
-
-# scp -P 22 -r capstone-2025@mulip-server.eecs.tufts.edu:/home/capstone-2025/ar_bot-master/ar_bot_sim/src/trained_models/ARBotGymEnv/* .
