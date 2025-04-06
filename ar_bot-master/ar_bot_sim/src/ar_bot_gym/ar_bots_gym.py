@@ -9,6 +9,7 @@ from gym import spaces
 from pybullet_utils import bullet_client
 import sys
 import os
+import random
 
 
 class RandomPolicy:
@@ -42,7 +43,7 @@ class ARBotGymEnv(gym.Env):
        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32)
       
        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
-       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(26,), dtype=np.float32)
+       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(28,), dtype=np.float32)
 
        self.linear_acc_curr = None
        self.angular_acc_curr = None
@@ -62,7 +63,9 @@ class ARBotGymEnv(gym.Env):
 
        # Loads the sphere above the arena drops down in the first step
        sphere_path = self.path + "env/obstacles/sphere_small.urdf"
-       self.ball = p.loadURDF(sphere_path, [0, 0, 0.05])
+       y = random.uniform(-0.08, 0.08)
+       x = random.uniform(-0.08, 0.08)
+       self.ball = p.loadURDF(sphere_path, [x, y, 0.05])
       
        # Load goals in green in gui
        self.goal_pos1 = np.array([0.0, -0.585])
@@ -249,8 +252,8 @@ class ARBotGymEnv(gym.Env):
        """Get LiDAR readings and robot positions for both robots."""
        lidar1 = self._simulate_lidar(self.robot1_id)
        lidar2 = self._simulate_lidar(self.robot2_id) 
-       pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
-       pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+       pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
+       pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
        ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
         
         #gives the lidar position and orientation for each robot plus the balls position
@@ -260,10 +263,23 @@ class ARBotGymEnv(gym.Env):
        dist_ball_goal1 = self.dist(ball_pos, goal_pos1)
        dist_ball_goal2 = self.dist(ball_pos, goal_pos2)
 
+       ball_x, ball_y = ball_pos[:2]
+       robot1x, robot1y = pos1[:2]
+       robot2x, robot2y = pos2[:2]
+       angle_to_ball1 = math.atan2(ball_y - robot1y, ball_x - robot1x)
+       angle_to_ball2 = math.atan2(ball_y - robot2y, ball_x - robot2x)
+       robot1_yaw = p.getEulerFromQuaternion(orn1)[2]
+       robot2_yaw = p.getEulerFromQuaternion(orn2)[2]
+       angle_to_turn = angle_to_ball1 - robot1_yaw
+       angle_to_turn2 = angle_to_ball2 - robot2_yaw
+
+       angle_to_turn = (angle_to_turn + np.pi) % (2 * np.pi) - np.pi
+       angle_to_turn2 = (angle_to_turn2 + np.pi) % (2 * np.pi) - np.pi
+
        # 0-8 are lidar1, 9-14 are x,y,oobot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-       #obs = np.hstack((lidar1, pos1[:2], lidar2, pos2[:2], ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
-       #print(obs.shape)
-       return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2], ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
+    #    obs = np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
+    #    print(obs.shape)
+       return np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
    
    #TODO: check for accuracy
    def _simulate_lidar(self, robot_id):
