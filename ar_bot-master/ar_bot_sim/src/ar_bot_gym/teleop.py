@@ -14,8 +14,8 @@ env = ARBotGymEnv(gui=True)
 key_mapping_robot1 = {
     ord('w'): (0.05, 0),    # Move forward
     ord('s'): (-0.05, 0),   # Move backward
-    ord('a'): (0, 0.05),    # Turn left
-    ord('d'): (0, -0.05)    # Turn right
+    ord('a'): (0, 10),    # Turn left
+    ord('d'): (0, -10)    # Turn right
 }
 
 key_mapping_robot2 = {
@@ -91,6 +91,10 @@ try:
         #print("Action: ", action)
         with open("trajectories.csv", mode="a", newline="") as csv_file:
             writer = csv.writer(csv_file)
+            
+            #go from [(-0.05 or 0.05), (-10 or 10)] to [(0 or 1), (0 or 1)]
+            action1 = [1 if x > 0 else 0 for x in action1]
+            action2 = [1 if x > 0 else 0 for x in action2]
             writer.writerow([episode, obs, action1, action2])
 
         # Optional: Print reward and observation

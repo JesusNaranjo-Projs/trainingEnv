@@ -37,7 +37,7 @@ class ARBotGymEnv(gym.Env):
        self._setup_simulation()
        self.last_touch = -1
        # Action space: Each robot has [linear_velocity, angular_velocity] -> now only one robot
-       self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
+       self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32)
       
        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
        #
@@ -110,17 +110,30 @@ class ARBotGymEnv(gym.Env):
    def step(self, action, agent_id):
         """Apply actions to both robots and return state, reward, done, and info."""
         #TODO: tune, current duration is equal to 250hz rn
-        angular_acc_delta, linear_acc_delta = action
+
+        #[0-1, 0-1]
+        angular_acc_delta_norm, linear_acc_delta_norm = action
+
+        #[-10<->10, -0.05<->0.05]
+        angular_acc_delta = -10 + angular_acc_delta_norm * (10 - (-10))
+        linear_acc_delta = -0.05 + linear_acc_delta_norm * (0.05 - (-0.05))
+
         self.angular_acc_curr += angular_acc_delta
         self.linear_acc_curr += linear_acc_delta
 
+        if (self.linear_acc_curr * linear_acc_delta) > 0:
+            self.linear_acc_curr += linear_acc_delta
+        else:
+           self.linear_acc_curr = linear_acc_delta
 
-    #    print("angular velocity", self.angular_acc_curr)
+        if (self.angular_acc_curr * angular_acc_delta) > 0:
+            self.angular_acc_curr += angular_acc_delta
+        else:
+            self.angular_acc_curr = angular_acc_delta
 
+        realAct = np.clip([self.linear_acc_curr, self.angular_acc_curr], [-28, -0.4], [28, 0.4])
 
-        realAct = [ self.angular_acc_curr, self.linear_acc_curr]
-
-        print("realAct", realAct)
+        #print("realAct", realAct)
         
         if agent_id == 1:
             self._apply_action(self.robot1_id, realAct)
@@ -128,10 +141,8 @@ class ARBotGymEnv(gym.Env):
             self._apply_action(self.robot2_id, realAct)
         p.stepSimulation()
 
-
         contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
         contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
-
 
         if contact_points1:  # If robot1 is in contact with the ball
             self.last_touch = 1
@@ -158,10 +169,6 @@ class ARBotGymEnv(gym.Env):
    def step_both(self, action1, action2):
         """Apply actions to both robots and return state, reward, done, and info."""
 
-        #    angular_acc_delta, linear_acc_delta = action
-        #    self.angular_acc_curr += angular_acc_delta
-        #    self.linear_acc_curr += linear_acc_delta
-
         angular_acc_delta1, linear_acc_delta1 = action1
         angular_acc_delta2, linear_acc_delta2 = action2
 
@@ -185,24 +192,15 @@ class ARBotGymEnv(gym.Env):
         else:
             self.angular_acc_curr2 = angular_acc_delta2
 
-        #realAct1 = [ self.angular_acc_curr1, self.linear_acc_curr1]
-        realAct1 = np.clip([self.linear_acc_curr1, self.angular_acc_curr1], -0.5, 0.5)
-       
-        #realAct2 = [ self.angular_acc_curr2, self.linear_acc_curr2]
-
+        realAct1 = np.clip([self.linear_acc_curr1, self.angular_acc_curr1], [-28, -0.4], [28, 0.4])
         realAct2 = np.clip([self.linear_acc_curr2, self.angular_acc_curr2], [-28, -0.4], [28, 0.4])
-        print("realAct2", realAct2)
-
-        if realAct1[0] != 0.0 or realAct1[1] != 0.0:
-            print("realAct1", realAct1)
-            self._apply_action(self.robot1_id, realAct1)
+ 
+        self._apply_action(self.robot1_id, realAct1)
         self._apply_action(self.robot2_id, realAct2)
         p.stepSimulation()
 
-
         contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
         contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
-
 
         if contact_points1:  # If robot1 is in contact with the ball
             self.last_touch = 1
@@ -241,44 +239,26 @@ class ARBotGymEnv(gym.Env):
        right_front_wheel_velocity = v_right / r_front
        right_rear_wheel_velocity  = v_right / r_rear
 
-       print("left_front_wheel_velocity", left_front_wheel_velocity)
-       print("left_rear_wheel_velocity", left_rear_wheel_velocity)
-       print("right_front_wheel_velocity", right_front_wheel_velocity)
-       print("right_rear_wheel_velocity", right_rear_wheel_velocity)
-
-       #speed = self.speed
-       #left_wheel_vel = linear - (angular * (0.045 / 2))
-       #right_wheel_vel = linear + (angular * (0.045 / 2))
-       #right_wheel_vel = (linear + angular) * speed
-
-    #    print("left_wheel_vel", left_wheel_vel)
-    #    print("right_wheel_vel", right_wheel_vel)
        p.setJointMotorControl2(robot_id, 5, p.VELOCITY_CONTROL, targetVelocity=left_rear_wheel_velocity, force=1)
        p.setJointMotorControl2(robot_id, 7, p.VELOCITY_CONTROL, targetVelocity=left_front_wheel_velocity, force=1)
 
        p.setJointMotorControl2(robot_id, 8, p.VELOCITY_CONTROL, targetVelocity=right_front_wheel_velocity, force=1)
        p.setJointMotorControl2(robot_id, 6, p.VELOCITY_CONTROL, targetVelocity=right_rear_wheel_velocity, force=1)
 
-      
-    #    for joint in [5, 7]:  # Left wheels
-    #        p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=left_wheel_vel, force=1000)
-      
-    #    for joint in [6, 8]:  # Right wheels
-    #        p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
-
-
    def _get_observation(self):
        """Get LiDAR readings and robot positions for both robots."""
        lidar1 = self._simulate_lidar(self.robot1_id)
-       lidar2 = self._simulate_lidar(self.robot2_id)
-       pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
-       pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
-       pos3, _ =  p.getBasePositionAndOrientation(self.ball)
-       #gives the lidar position and orientation for each robot plus the balls position
+       lidar2 = self._simulate_lidar(self.robot2_id) 
+       pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
+       pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
+       ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
+               #gives the lidar position and orientation for each robot plus the balls position
       
        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
 
+       dist_ball_goal1 = np.linalg.norm(ball_pos - goal_pos1)
+       dist_ball_goal2 = np.linalg.norm(ball_pos - goal_pos2)
 
        #TODO
        #everythuing is oriented about the middle of the soccer field
@@ -291,8 +271,8 @@ class ARBotGymEnv(gym.Env):
        #lidar included
 
 
-       # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-       return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
+       # 0-8 are lidar1, 9-14 are x,y,oobot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
+       return np.hstack(lidar1, dist_ball_goal1, lidar2, dist_ball_goal2, ball_pos[:2], goal_pos1[:2], goal_pos2[:2])
   
    def _get_opponent_observation(self):
        """Get LiDAR readings and robot positions for both robots."""
@@ -305,7 +285,11 @@ class ARBotGymEnv(gym.Env):
        ## SWAPPED the positions
        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-       return np.hstack((lidar1, pos1[:2], orn1, lidar2, pos2[:2], orn2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
+
+       dist_ball_goal1 = np.linalg.norm(pos3 - goal_pos1)
+       dist_ball_goal2 = np.linalg.norm(pos3 - goal_pos2)
+
+       return np.hstack((lidar1, dist_ball_goal1[:2],lidar2, dist_ball_goal2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
 
 
    #TODO: check for accuracy
