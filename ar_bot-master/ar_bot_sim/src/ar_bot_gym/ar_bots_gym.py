@@ -46,6 +46,12 @@ class ARBotGymEnv(gym.Env):
 
        self.linear_acc_curr = None
        self.angular_acc_curr = None
+
+       self.linear_acc_curr1 = None
+       self.angular_acc_curr1 = None
+
+       self.linear_acc_curr2 = None
+       self.angular_acc_curr2 = None
       
    def _setup_simulation(self):
        """Set up the PyBullet simulation."""
@@ -82,6 +88,11 @@ class ARBotGymEnv(gym.Env):
        self.timestep = 0
        self.angular_acc_curr = 0.0
        self.linear_acc_curr = 0.0
+       self.linear_acc_curr1 = 0.0
+       self.angular_acc_curr1 = 0.0
+       self.linear_acc_curr2 = 0.0
+       self.angular_acc_curr2 = 0.0
+      
       
    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
        """Reset the environment."""
@@ -97,95 +108,163 @@ class ARBotGymEnv(gym.Env):
   
   
    def step(self, action, agent_id):
-       """Apply actions to both robots and return state, reward, done, and info."""
-       #TODO: tune, current duration is equal to 250hz rn
-       #angular_acc_delta, linear_acc_delta = action
-       #self.angular_acc_curr += angular_acc_delta
-       #self.linear_acc_curr += linear_acc_delta
+        """Apply actions to both robots and return state, reward, done, and info."""
+        #TODO: tune, current duration is equal to 250hz rn
+        angular_acc_delta, linear_acc_delta = action
+        self.angular_acc_curr += angular_acc_delta
+        self.linear_acc_curr += linear_acc_delta
 
 
     #    print("angular velocity", self.angular_acc_curr)
 
 
-    #    realAct = [self.linear_acc_curr, self.angular_acc_curr]
-      
-       if agent_id == 1:
-           self._apply_action(self.robot1_id, action)
-       else:
-           self._apply_action(self.robot2_id, action)
-       p.stepSimulation()
+        realAct = [ self.angular_acc_curr, self.linear_acc_curr]
+
+        print("realAct", realAct)
+        
+        if agent_id == 1:
+            self._apply_action(self.robot1_id, realAct)
+        else:
+            self._apply_action(self.robot2_id, realAct)
+        p.stepSimulation()
 
 
-       contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
-       contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+        contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
+        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
 
 
-       if contact_points1:  # If robot1 is in contact with the ball
-           self.last_touch = 1
-       elif contact_points2:  # If robot2 is in contact with the ball
-           self.last_touch = 2
-       if self.gui:
-           time.sleep(1./240.)
-      
-       obs = self._get_observation()
-       # opp_obs = self._get_opponent_observation()
-       reward_main, reward_opponent = self._compute_reward(obs)
-       done, _ = self._is_done(obs)
-       info = {}
-      
-       self.timestep += 1
-       if (self.timestep >= self.max_timesteps):
-           done = True
-      
-       if agent_id == 1:
-           return obs, reward_main, done, info
-       else:
-           return obs, reward_opponent, done, info
+        if contact_points1:  # If robot1 is in contact with the ball
+            self.last_touch = 1
+        elif contact_points2:  # If robot2 is in contact with the ball
+            self.last_touch = 2
+        if self.gui:
+            time.sleep(1./240.)
+        
+        obs = self._get_observation()
+        # opp_obs = self._get_opponent_observation()
+        reward_main, reward_opponent = self._compute_reward(obs)
+        done, _ = self._is_done(obs)
+        info = {}
+        
+        self.timestep += 1
+        if (self.timestep >= self.max_timesteps):
+            done = True
+    
+        if agent_id == 1:
+            return obs, reward_main, done, info
+        else:
+            return obs, reward_opponent, done, info
   
    def step_both(self, action1, action2):
-       """Apply actions to both robots and return state, reward, done, and info."""
-       self._apply_action(self.robot1_id, action1)
-       self._apply_action(self.robot2_id, action2)
-       p.stepSimulation()
+        """Apply actions to both robots and return state, reward, done, and info."""
+
+        #    angular_acc_delta, linear_acc_delta = action
+        #    self.angular_acc_curr += angular_acc_delta
+        #    self.linear_acc_curr += linear_acc_delta
+
+        angular_acc_delta1, linear_acc_delta1 = action1
+        angular_acc_delta2, linear_acc_delta2 = action2
+
+        if (self.linear_acc_curr1 * linear_acc_delta1) > 0:
+            self.linear_acc_curr1 += linear_acc_delta1
+        else:
+           self.linear_acc_curr1 = linear_acc_delta1
+
+        if (self.angular_acc_curr1 * angular_acc_delta1) > 0:
+            self.angular_acc_curr1 += angular_acc_delta1
+        else:
+            self.angular_acc_curr1 = angular_acc_delta1
+
+        if (self.linear_acc_curr2 * linear_acc_delta2) > 0:      
+           self.linear_acc_curr2 += linear_acc_delta2
+        else:
+           self.linear_acc_curr2 = linear_acc_delta2
+
+        if (self.angular_acc_curr2 * angular_acc_delta2) > 0:
+            self.angular_acc_curr2 += angular_acc_delta2
+        else:
+            self.angular_acc_curr2 = angular_acc_delta2
+
+        #realAct1 = [ self.angular_acc_curr1, self.linear_acc_curr1]
+        realAct1 = np.clip([self.linear_acc_curr1, self.angular_acc_curr1], -0.5, 0.5)
+       
+        #realAct2 = [ self.angular_acc_curr2, self.linear_acc_curr2]
+
+        realAct2 = np.clip([self.linear_acc_curr2, self.angular_acc_curr2], [-28, -0.4], [28, 0.4])
+        print("realAct2", realAct2)
+
+        if realAct1[0] != 0.0 or realAct1[1] != 0.0:
+            print("realAct1", realAct1)
+            self._apply_action(self.robot1_id, realAct1)
+        self._apply_action(self.robot2_id, realAct2)
+        p.stepSimulation()
 
 
-       contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
-       contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+        contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
+        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
 
 
-       if contact_points1:  # If robot1 is in contact with the ball
-           self.last_touch = 1
-       elif contact_points2:  # If robot2 is in contact with the ball
-           self.last_touch = 2
-       if self.gui:
-           time.sleep(1./240.)
-      
-       obs = self._get_observation()
-       # opp_obs = self._get_opponent_observation()
-       reward_main, reward_opponent = self._compute_reward_simple(obs)
-       done, _ = self._is_done(obs)
-       info = {}
-      
-       self.timestep += 1
-       if (self.timestep >= self.max_timesteps):
-           done = True
-      
-       return obs, reward_main, reward_opponent, done, info
-  
+        if contact_points1:  # If robot1 is in contact with the ball
+            self.last_touch = 1
+        elif contact_points2:  # If robot2 is in contact with the ball
+            self.last_touch = 2
+        if self.gui:
+            time.sleep(1./240.)
+        
+        obs = self._get_observation()
+        # opp_obs = self._get_opponent_observation()
+        reward_main, reward_opponent = self._compute_reward_simple(obs)
+        done, _ = self._is_done(obs)
+        info = {}
+        
+        self.timestep += 1
+        if (self.timestep >= self.max_timesteps):
+            done = True
+        
+        return obs, reward_main, reward_opponent, done, info
+    
    def _apply_action(self, robot_id, action):
        """Apply motion commands to a robot."""
       
        angular, linear = action
+
+       r_front = 0.01314
+       r_rear = 0.008995
+       track_width = 0.048
+
+       v_left = linear - (angular * track_width / 2.0)
+       v_right = linear + (angular * track_width / 2.0)
+
+       # Compute angular velocities (rad/s) for each wheel
+       left_front_wheel_velocity = v_left / r_front
+       left_rear_wheel_velocity  = v_left / r_rear
+       right_front_wheel_velocity = v_right / r_front
+       right_rear_wheel_velocity  = v_right / r_rear
+
+       print("left_front_wheel_velocity", left_front_wheel_velocity)
+       print("left_rear_wheel_velocity", left_rear_wheel_velocity)
+       print("right_front_wheel_velocity", right_front_wheel_velocity)
+       print("right_rear_wheel_velocity", right_rear_wheel_velocity)
+
        #speed = self.speed
-       left_wheel_vel = linear - (angular * (0.045 / 2))
-       right_wheel_vel = linear + (angular * (0.045 / 2))
+       #left_wheel_vel = linear - (angular * (0.045 / 2))
+       #right_wheel_vel = linear + (angular * (0.045 / 2))
        #right_wheel_vel = (linear + angular) * speed
+
+    #    print("left_wheel_vel", left_wheel_vel)
+    #    print("right_wheel_vel", right_wheel_vel)
+       p.setJointMotorControl2(robot_id, 5, p.VELOCITY_CONTROL, targetVelocity=left_rear_wheel_velocity, force=1)
+       p.setJointMotorControl2(robot_id, 7, p.VELOCITY_CONTROL, targetVelocity=left_front_wheel_velocity, force=1)
+
+       p.setJointMotorControl2(robot_id, 8, p.VELOCITY_CONTROL, targetVelocity=right_front_wheel_velocity, force=1)
+       p.setJointMotorControl2(robot_id, 6, p.VELOCITY_CONTROL, targetVelocity=right_rear_wheel_velocity, force=1)
+
       
-       for joint in [5, 7]:  # Left wheels
-           p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=left_wheel_vel, force=1000)
+    #    for joint in [5, 7]:  # Left wheels
+    #        p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=left_wheel_vel, force=1000)
       
-       for joint in [6, 8]:  # Right wheels
-           p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
+    #    for joint in [6, 8]:  # Right wheels
+    #        p.setJointMotorControl2(robot_id, joint, p.VELOCITY_CONTROL, targetVelocity=right_wheel_vel, force=1000)
 
 
    def _get_observation(self):

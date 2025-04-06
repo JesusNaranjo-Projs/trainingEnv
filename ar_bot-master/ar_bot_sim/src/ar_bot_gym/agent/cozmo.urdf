@@ -158,10 +158,10 @@
   </transmission>
   <gazebo reference="front_left_wheel">
     <selfCollide>True</selfCollide>
-    <!-- <mu1 value="200.0"/>
-      <mu2 value="100.0"/>
-      <kp value="10000000.0"/>
-      <kd value="1.0"/> -->
+    <mu1 value="200.0"/>
+    <mu2 value="100.0"/>
+    <kp value="10000000.0"/>
+    <kd value="1.0"/>
   </gazebo>
   <link name="front_right_wheel">
     <visual>
@@ -208,10 +208,10 @@
   </transmission>
   <gazebo reference="front_right_wheel">
     <selfCollide>True</selfCollide>
-    <!-- <mu1 value="200.0"/>
-      <mu2 value="100.0"/>
-      <kp value="10000000.0"/>
-      <kd value="1.0"/> -->
+    <mu1 value="200.0"/>
+    <mu2 value="100.0"/>
+    <kp value="10000000.0"/>
+    <kd value="1.0"/>
   </gazebo>
   <link name="rear_left_wheel">
     <visual>
@@ -258,10 +258,10 @@
   </transmission>
   <gazebo reference="rear_left_wheel">
     <selfCollide>True</selfCollide>
-    <!-- <mu1 value="200.0"/>
-      <mu2 value="100.0"/>
-      <kp value="10000000.0"/>
-      <kd value="1.0"/> -->
+    <mu1 value="200.0"/>
+    <mu2 value="100.0"/>
+    <kp value="10000000.0"/>
+    <kd value="1.0"/>
   </gazebo>
   <link name="rear_right_wheel">
     <visual>
@@ -308,10 +308,10 @@
   </transmission>
   <gazebo reference="rear_right_wheel">
     <selfCollide>True</selfCollide>
-    <!-- <mu1 value="200.0"/>
-      <mu2 value="100.0"/>
-      <kp value="10000000.0"/>
-      <kd value="1.0"/> -->
+    <mu1 value="200.0"/>
+    <mu2 value="100.0"/>
+    <kp value="10000000.0"/>
+    <kd value="1.0"/>
   </gazebo>
   <link name="left_belt">
     <visual>

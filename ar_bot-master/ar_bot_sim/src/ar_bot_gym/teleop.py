@@ -12,17 +12,17 @@ env = ARBotGymEnv(gui=True)
 
 # Define control keys for each robot
 key_mapping_robot1 = {
-    ord('w'): (1, 0),    # Move forward
-    ord('s'): (-1, 0),   # Move backward
-    ord('a'): (0, 1),    # Turn left
-    ord('d'): (0, -1)    # Turn right
+    ord('w'): (0.05, 0),    # Move forward
+    ord('s'): (-0.05, 0),   # Move backward
+    ord('a'): (0, 0.05),    # Turn left
+    ord('d'): (0, -0.05)    # Turn right
 }
 
 key_mapping_robot2 = {
-    p.B3G_UP_ARROW: (1, 0),    # Move forward
-    p.B3G_DOWN_ARROW: (-1, 0), # Move backward
-    p.B3G_LEFT_ARROW: (0, 1),  # Turn left
-    p.B3G_RIGHT_ARROW: (0, -1) # Turn right
+    p.B3G_UP_ARROW: (0.05, 0),    # Move forward
+    p.B3G_DOWN_ARROW: (-0.05, 0), # Move backward
+    p.B3G_LEFT_ARROW: (0, 10),  # Turn left
+    p.B3G_RIGHT_ARROW: (0, -10) # Turn right
 }
 
 def get_keyboard_action():
