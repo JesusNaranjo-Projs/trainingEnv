@@ -7,6 +7,8 @@ import math
 from typing import Optional
 from gym import spaces
 from pybullet_utils import bullet_client
+import sys
+import os
 
 
 class RandomPolicy:
@@ -40,9 +42,7 @@ class ARBotGymEnv(gym.Env):
        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32)
       
        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
-       #
-       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(36,), dtype=np.float32)
-
+       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(26,), dtype=np.float32)
 
        self.linear_acc_curr = None
        self.angular_acc_curr = None
@@ -152,9 +152,9 @@ class ARBotGymEnv(gym.Env):
             time.sleep(1./240.)
         
         obs = self._get_observation()
-        # opp_obs = self._get_opponent_observation()
-        reward_main, reward_opponent = self._compute_reward(obs)
         done, _ = self._is_done(obs)
+        reward_main, reward_opponent = self._compute_reward(done)
+        
         info = {}
         
         self.timestep += 1
@@ -210,9 +210,8 @@ class ARBotGymEnv(gym.Env):
             time.sleep(1./240.)
         
         obs = self._get_observation()
-        # opp_obs = self._get_opponent_observation()
-        reward_main, reward_opponent = self._compute_reward_simple(obs)
         done, _ = self._is_done(obs)
+        reward_main, reward_opponent = self._compute_reward()
         info = {}
         
         self.timestep += 1
@@ -226,6 +225,7 @@ class ARBotGymEnv(gym.Env):
       
        angular, linear = action
 
+       #from urdf file
        r_front = 0.01314
        r_rear = 0.008995
        track_width = 0.048
@@ -252,46 +252,19 @@ class ARBotGymEnv(gym.Env):
        pos1, _ = p.getBasePositionAndOrientation(self.robot1_id)
        pos2, _ = p.getBasePositionAndOrientation(self.robot2_id)
        ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
-               #gives the lidar position and orientation for each robot plus the balls position
-      
+        
+        #gives the lidar position and orientation for each robot plus the balls position
        goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
        goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
 
-       dist_ball_goal1 = np.linalg.norm(ball_pos - goal_pos1)
-       dist_ball_goal2 = np.linalg.norm(ball_pos - goal_pos2)
-
-       #TODO
-       #everythuing is oriented about the middle of the soccer field
-       #orientation of opponents is not needed#
-       #no need for agent distance to goal or ball
-
-       #required values for observation:
-       #distance between ball and goal (minize)
-       #distance btween ball and opposing goal (maximize)
-       #lidar included
-
+       dist_ball_goal1 = self.dist(ball_pos, goal_pos1)
+       dist_ball_goal2 = self.dist(ball_pos, goal_pos2)
 
        # 0-8 are lidar1, 9-14 are x,y,oobot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-       return np.hstack(lidar1, dist_ball_goal1, lidar2, dist_ball_goal2, ball_pos[:2], goal_pos1[:2], goal_pos2[:2])
-  
-   def _get_opponent_observation(self):
-       """Get LiDAR readings and robot positions for both robots."""
-       lidar1 = self._simulate_lidar(self.robot1_id)
-       lidar2 = self._simulate_lidar(self.robot2_id)
-       pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
-       pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
-       pos3, _ =  p.getBasePositionAndOrientation(self.ball)
-       #gives the lidar position and orientation for each robot plus the balls position
-       ## SWAPPED the positions
-       goal_pos1, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
-       goal_pos2, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-
-       dist_ball_goal1 = np.linalg.norm(pos3 - goal_pos1)
-       dist_ball_goal2 = np.linalg.norm(pos3 - goal_pos2)
-
-       return np.hstack((lidar1, dist_ball_goal1[:2],lidar2, dist_ball_goal2, pos3[:2], goal_pos1[:2], goal_pos2[:2]))
-
-
+       #obs = np.hstack((lidar1, pos1[:2], lidar2, pos2[:2], ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
+       #print(obs.shape)
+       return np.hstack((lidar1, pos1[:2], lidar2, pos2[:2], ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
+   
    #TODO: check for accuracy
    def _simulate_lidar(self, robot_id):
        """Simulate LiDAR measurements for a robot."""
@@ -312,7 +285,7 @@ class ARBotGymEnv(gym.Env):
       
        results = p.rayTestBatch(ray_from, ray_to)
        distances = np.array([res[2] for res in results])
-       return distances
+       return np.clip(distances / lidar_range, 0.0, 1.0)
 
 
    def _check_ball_in_FOV(self, obs, robot_id):
@@ -368,104 +341,61 @@ class ARBotGymEnv(gym.Env):
                return False
           
        return True
-          
+    
+    
+   def dist(self, p1, p2):
+       return np.linalg.norm(np.array(p1) - np.array(p2))
   
    #TODO: needs to be changed with the reward function(prithvi)
-   def _compute_reward(self, obs):
-       """Compute the reward function."""
-       # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-       ball = obs[30:32]
-       rew1, rew2 = 0, 0
-       goal_pos1 = obs[32:34]
-       goal_pos2 = obs[34:36]
-       dist1 = np.linalg.norm(ball - goal_pos1)
-       dist2 = np.linalg.norm(ball - goal_pos2)
-      
-       robot_pos1 = obs[9:11]
-       robot_pos2 = obs[24:26]
-      
-       dist_to_ball1 = np.linalg.norm(ball - robot_pos1)
-       dist_to_ball2 = np.linalg.norm(ball - robot_pos2)
-      
-       diff1 = round(dist_to_ball1, 4) - round(self.robot1_dist_to_ball, 4)
-       diff2 = round(dist_to_ball2, 4) - round(self.robot2_dist_to_ball, 4)
+   def _compute_reward(self):
+        """Compute the reward function."""
+        # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
+        ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
+        
+        goalA_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
+        robotA_pos, _ = p.getBasePositionAndOrientation(self.robot1_id)
+
+        goalB_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
+        robotB_pos, _ = p.getBasePositionAndOrientation(self.robot2_id)
 
 
-       moving_towards1 = diff1 < 0 and -diff1 > 0.0002
-       moving_towards2 = diff2 < 0 and -diff2 > 0.0002
+        d_A_ball = self.dist(robotA_pos, ball_pos)
+        d_B_ball = self.dist(robotB_pos, ball_pos)
+        d_ball_goalB = self.dist(ball_pos, goalB_pos)
+        d_ball_goalA = self.dist(ball_pos, goalA_pos)
 
+        reward_A = 0.0
+        reward_B = 0.0
 
-       if (dist1 < 0.075):
-           rew1 = self.max_timesteps
-           rew2 = -self.max_timesteps
-       elif (dist2 < 0.075):
-           rew1 = -self.max_timesteps
-           rew2 = self.max_timesteps
-       else:
-           fov1, ang_diff1 = self._check_ball_in_FOV(obs, 1)
-           fov2, ang_diff2 = self._check_ball_in_FOV(obs, 2)
-           if moving_towards1 and fov1 and self._check_corners(obs, 1):
-               # Check for ball in narrow FOV
-               if self._check_corners(obs, 1):
-                   rew1 = 5 - dist1
-               else:
-                   rew1 = -dist1 * 2 * math.pi
-           elif moving_towards1:
-               rew1 = -ang_diff1
-           elif fov1:
-               rew1 = -dist1 * 2 * math.pi
-           else:
-               rew1 = -dist1 * 2 * math.pi - ang_diff1
-          
-           if moving_towards2 and fov2 and self._check_corners(obs, 2):
-               # check for ball in narrow FOV
-               if self._check_corners(obs, 2):
-                   rew2 = 5 - dist2
-               else:
-                   rew2 = -dist2 * 2 * math.pi
-           elif moving_towards2:
-               rew2 = -ang_diff2
-           elif fov2:
-               rew2 = -dist2 * 2 * math.pi
-           else:
-               rew2 = -dist2 * 2 * math.pi - ang_diff2
+        # --- Encourage getting closer to the ball ---
+        reward_A += 1 / (d_A_ball + 1e-5) * 0.2
+        reward_B += 1 / (d_B_ball + 1e-5) * 0.2
 
+        # --- Encourage positioning behind the ball relative to the opponent's goal ---
+        def alignment_reward(robot_pos, ball_pos, goal_pos):
+            vec_goal = (goal_pos[0] - ball_pos[0], goal_pos[1] - ball_pos[1])
+            vec_robot = (ball_pos[0] - robot_pos[0], ball_pos[1] - robot_pos[1])
+            dot = vec_goal[0] * vec_robot[0] + vec_goal[1] * vec_robot[1]
+            return 1.0 if dot > 0 else -0.5
 
-       self.robot1_dist_to_ball = dist_to_ball1
-       self.robot2_dist_to_ball = dist_to_ball2
+        reward_A += alignment_reward(robotA_pos, ball_pos, goalB_pos)
+        reward_B += alignment_reward(robotB_pos, ball_pos, goalA_pos)
 
+        # --- Scoring ---
+ 
+        if d_ball_goalB  < 0.075 :
+            reward_A += 100
+            reward_B -= 100
+        elif d_ball_goalA < 0.075:
+            reward_B += 100
+            reward_A -= 100
 
-       return rew1, rew2
+        # --- Time penalty ---
+        reward_A -= 0.01
+        reward_B -= 0.01
 
+        return reward_A, reward_B
 
-   #TODO: needs to be changed with the reward function(prithvi)
-   def _compute_reward_simple(self, obs):
-       """Compute the reward function."""
-       #TODO
-       #since observation state will change revise ball, goal_pos1, and goal_pos2
-
-
-       # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-       ball = obs[30:32]
-       rew1, rew2 = 0, 0
-       goal_pos1 = obs[32:34]
-       goal_pos2 = obs[34:36]
-       dist1 = np.linalg.norm(ball - goal_pos1)
-       dist2 = np.linalg.norm(ball - goal_pos2)
-      
-       if (dist1 < 0.075):
-           rew1 = 100##max_timesteps / 100
-           rew2 = -100#max_timesteps / 100
-       elif (dist2 < 0.075):
-           rew1 = -100#max_timesteps / 100
-           rew2 = 100#.max_timesteps / 100
-       else:
-           rew1 = -0.01
-           rew2 = -0.01
-
-
-       return rew1, rew2
-  
    """ Checks if the episode is done, specifically if the ball has reached either goal
        Returns a flag if epsiode is done as well as an int for each robot
        1: is the first robot, named self.robot_id1
@@ -479,16 +409,14 @@ class ARBotGymEnv(gym.Env):
        """Check if the episode is done."""
        ball = obs[30:32]
 
+       
+       ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
+       goalA_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
+       goalB_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
+       d_ball_goalB = self.dist(ball_pos, goalB_pos)
+       d_ball_goalA = self.dist(ball_pos, goalA_pos)
 
-       goal_pos1 = obs[32:34]
-       goal_pos2 = obs[34:36]
-
-
-       check1 = np.linalg.norm(ball - goal_pos1) < 0.075
-       check2 = np.linalg.norm(ball - goal_pos2) < 0.075
-
-
-       if (check1 or check2):
+       if (d_ball_goalA< 0.075 or d_ball_goalB < 0.075):
            return True, self.last_touch
       
        return False, -1
