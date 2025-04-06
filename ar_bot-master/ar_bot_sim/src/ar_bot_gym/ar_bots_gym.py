@@ -284,8 +284,11 @@ class ARBotGymEnv(gym.Env):
        #everythuing is oriented about the middle of the soccer field
        #orientation of opponents is not needed#
        #no need for agent distance to goal or ball
+
+       #required values for observation:
        #distance between ball and goal (minize)
        #distance btween ball and opposing goal (maximize)
+       #lidar included
 
 
        # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
