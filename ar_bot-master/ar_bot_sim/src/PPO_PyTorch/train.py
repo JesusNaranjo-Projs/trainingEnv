@@ -210,18 +210,8 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                     ppo_agent1.update()
                     ppo_agent2.update()
 
-                    ppo_agent1.buffer.rewards.clear()
-                    ppo_agent1.buffer.is_terminals.clear()
-                    ppo_agent2.buffer.rewards.clear()
-                    ppo_agent2.buffer.is_terminals.clear()
-
-                    ppo_agent1.buffer.states.clear()
-                    ppo_agent1.buffer.actions.clear()
-                    ppo_agent1.buffer.logprobs.clear()
-                    ppo_agent2.buffer.states.clear()
-                    ppo_agent2.buffer.actions.clear()
-                    ppo_agent2.buffer.logprobs.clear()
-                            
+        ppo_agent1.buffer.clear()
+        ppo_agent2.buffer.clear()
         ppo_agent1.save(checkpoint_path1)
         ppo_agent2.save(checkpoint_path2)
         print("Finished pretraining")
