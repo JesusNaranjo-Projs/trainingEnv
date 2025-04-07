@@ -3,7 +3,7 @@ import glob
 import time
 from datetime import datetime
 import csv
-
+import ast
 import torch
 import numpy as np
 
@@ -173,18 +173,30 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 obs = row["Observation"]# Stored as string need as numpy.ndarray
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
                 action2 = row["Action2"]# Stored as string need as numpy.ndarray
+                #print(action1, action2)
                 
                 # Change strings to proper np.ndarray
                 obs = np.fromstring(obs[2:-1], sep="  ")
-                action1 = np.fromstring(action1[1:-1], sep=" ")
-                action2 = np.fromstring(action2[1:-1], sep=" ")
                 
                 # Take the actions in the PPO algo
+                #print(action1, action2)
+                if "," in action1 and action2:
+                    action1 = ast.literal_eval(action1)
+                    action2 = ast.literal_eval(action2)
+                else:
+                    action1 = np.fromstring(action1.strip("[]"), sep=' ')
+                    action2 = np.fromstring(action2.strip("[]"), sep=' ')
+
+                # print(action1, action2)
+
+                action1 = np.array(action1, dtype=np.float32)
+                action2 = np.array(action2, dtype=np.float32)
+
                 ppo_agent1.take_action(obs, action1)
                 ppo_agent2.take_action(obs, action2)
                 
                 # Compute the reward that would occur given the actions
-                reward1, reward2 = env._compute_reward_simple(obs)
+                reward1, reward2 = env._compute_reward()
                 done, _ = env._is_done(obs)
 
                 # saving reward and is_terminals
@@ -197,7 +209,19 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 if done:
                     ppo_agent1.update()
                     ppo_agent2.update()
-            
+
+                    ppo_agent1.buffer.rewards.clear()
+                    ppo_agent1.buffer.is_terminals.clear()
+                    ppo_agent2.buffer.rewards.clear()
+                    ppo_agent2.buffer.is_terminals.clear()
+
+                    ppo_agent1.buffer.states.clear()
+                    ppo_agent1.buffer.actions.clear()
+                    ppo_agent1.buffer.logprobs.clear()
+                    ppo_agent2.buffer.states.clear()
+                    ppo_agent2.buffer.actions.clear()
+                    ppo_agent2.buffer.logprobs.clear()
+                            
         ppo_agent1.save(checkpoint_path1)
         ppo_agent2.save(checkpoint_path2)
         print("Finished pretraining")

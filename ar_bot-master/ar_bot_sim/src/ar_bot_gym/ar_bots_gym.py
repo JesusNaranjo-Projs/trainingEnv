@@ -10,6 +10,8 @@ from pybullet_utils import bullet_client
 import sys
 import os
 import random
+from reward_function import compute_team_rewards
+
 
 
 class RandomPolicy:
@@ -364,53 +366,7 @@ class ARBotGymEnv(gym.Env):
   
    #TODO: needs to be changed with the reward function(prithvi)
    def _compute_reward(self):
-        """Compute the reward function."""
-        # 0-8 are lidar1, 9-14 are x,y,orient of robot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-        ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
-        
-        goalA_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-        robotA_pos, _ = p.getBasePositionAndOrientation(self.robot1_id)
-
-        goalB_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
-        robotB_pos, _ = p.getBasePositionAndOrientation(self.robot2_id)
-
-
-        d_A_ball = self.dist(robotA_pos, ball_pos)
-        d_B_ball = self.dist(robotB_pos, ball_pos)
-        d_ball_goalB = self.dist(ball_pos, goalB_pos)
-        d_ball_goalA = self.dist(ball_pos, goalA_pos)
-
-        reward_A = 0.0
-        reward_B = 0.0
-
-        # --- Encourage getting closer to the ball ---
-        reward_A += 1 / (d_A_ball + 1e-5) * 0.2
-        reward_B += 1 / (d_B_ball + 1e-5) * 0.2
-
-        # --- Encourage positioning behind the ball relative to the opponent's goal ---
-        def alignment_reward(robot_pos, ball_pos, goal_pos):
-            vec_goal = (goal_pos[0] - ball_pos[0], goal_pos[1] - ball_pos[1])
-            vec_robot = (ball_pos[0] - robot_pos[0], ball_pos[1] - robot_pos[1])
-            dot = vec_goal[0] * vec_robot[0] + vec_goal[1] * vec_robot[1]
-            return 1.0 if dot > 0 else -0.5
-
-        reward_A += alignment_reward(robotA_pos, ball_pos, goalB_pos)
-        reward_B += alignment_reward(robotB_pos, ball_pos, goalA_pos)
-
-        # --- Scoring ---
- 
-        if d_ball_goalB  < 0.075 :
-            reward_A += 100
-            reward_B -= 100
-        elif d_ball_goalA < 0.075:
-            reward_B += 100
-            reward_A -= 100
-
-        # --- Time penalty ---
-        reward_A -= 0.01
-        reward_B -= 0.01
-
-        return reward_A, reward_B
+        return compute_team_rewards(self)
 
    """ Checks if the episode is done, specifically if the ball has reached either goal
        Returns a flag if epsiode is done as well as an int for each robot
