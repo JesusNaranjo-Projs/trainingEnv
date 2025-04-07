@@ -55,6 +55,7 @@ class ARBotGymEnv(gym.Env):
 
        self.linear_acc_curr2 = None
        self.angular_acc_curr2 = None
+       self.prev_ball_pos = None
       
    def _setup_simulation(self):
        """Set up the PyBullet simulation."""
@@ -115,6 +116,8 @@ class ARBotGymEnv(gym.Env):
    def step(self, action, agent_id):
         """Apply actions to both robots and return state, reward, done, and info."""
         #TODO: tune, current duration is equal to 250hz rn
+
+        self.prev_ball_pos = p.getBasePositionAndOrientation(self.ball)[0]
 
         #[0-1, 0-1]
         angular_acc_delta_norm, linear_acc_delta_norm = action
