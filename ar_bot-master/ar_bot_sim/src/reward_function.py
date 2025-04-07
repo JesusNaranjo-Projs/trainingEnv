@@ -81,9 +81,9 @@ def compute_team_rewards(env):
         reward_A += ball_movement_reward(env.prev_ball_pos, ball_pos, goalB_pos)
         reward_B += ball_movement_reward(env.prev_ball_pos, ball_pos, goalA_pos)
 
-    # # [3] Contact
-    # reward_A += contact_reward(d_A_ball)
-    # reward_B += contact_reward(d_B_ball)
+    # [3] Contact
+    reward_A += contact_reward(d_A_ball)
+    reward_B += contact_reward(d_B_ball)
 
     # # [4] Behind ball alignment
     # reward_A += 1.5 * alignment_reward(robotA_pos, ball_pos, goalB_pos)
