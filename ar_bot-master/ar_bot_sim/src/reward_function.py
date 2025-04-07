@@ -85,20 +85,20 @@ def compute_team_rewards(env):
     reward_A += contact_reward(d_A_ball)
     reward_B += contact_reward(d_B_ball)
 
-    # [4] Behind ball alignment
-    reward_A += 1.5 * alignment_reward(robotA_pos, ball_pos, goalB_pos)
-    reward_B += 1.5 * alignment_reward(robotB_pos, ball_pos, goalA_pos)
+    # # [4] Behind ball alignment
+    # reward_A += 1.5 * alignment_reward(robotA_pos, ball_pos, goalB_pos)
+    # reward_B += 1.5 * alignment_reward(robotB_pos, ball_pos, goalA_pos)
 
-    # [5] Facing the ball
-    reward_A += 0.5 * facing_ball_reward(robotA_pos, yawA, ball_pos)
-    reward_B += 0.5 * facing_ball_reward(robotB_pos, yawB, ball_pos)
+    # # [5] Facing the ball
+    # reward_A += 0.5 * facing_ball_reward(robotA_pos, yawA, ball_pos)
+    # reward_B += 0.5 * facing_ball_reward(robotB_pos, yawB, ball_pos)
 
-    # [6] Approach reward (encouraging getting close *while* facing)
-    reward_A += approach_reward(robotA_pos, yawA, ball_pos)
-    reward_B += approach_reward(robotB_pos, yawB, ball_pos)
+    # # [6] Approach reward (encouraging getting close *while* facing)
+    # reward_A += approach_reward(robotA_pos, yawA, ball_pos)
+    # reward_B += approach_reward(robotB_pos, yawB, ball_pos)
 
-    # [7] Time penalty
-    reward_A -= 0.01
-    reward_B -= 0.01
+    # # [7] Time penalty
+    # reward_A -= 0.01
+    # reward_B -= 0.01
 
     return reward_A, reward_B
