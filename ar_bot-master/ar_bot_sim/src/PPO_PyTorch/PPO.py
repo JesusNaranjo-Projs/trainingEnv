@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
 
@@ -282,7 +283,16 @@ class PPO:
         self.policy_old.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
         self.policy.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
         
+
+class Random:
+    def __init__(self, random_seed):
+        self.random_seed = random_seed
+        self.x_actions = [-10, 0, 10]
+        self.y_actions = [-0.5, 0, 0.5]
+        # Action space for random is [-0.5, -10] to [0.5, 10]
+
+    def select_action(self, state):
+        x = np.random.choice(self.x_actions, 1, replace=False)
+        y = np.random.choice(self.y_actions, 1, replace=False)
         
-       
-
-
+        return np.hstack([y, x], dtype=np.float32)

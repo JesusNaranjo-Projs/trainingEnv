@@ -17,8 +17,7 @@ if (args.cont and args.name == None):
     sys.exit(1)
 
 if (args.name != None and args.name[-4:] != ".pth"):
-    sys.stderr.write("ERROR: all model names must end with the .pth suffix\n")
-    sys.exit(1)
+    args.name += ".pth"
 
 train(ARBotGymEnv, continuation=args.cont, model_name=args.name, max_ep_len=args.maxEp, max_training_timesteps=args.maxTime, pretrain=args.pretrain)
 

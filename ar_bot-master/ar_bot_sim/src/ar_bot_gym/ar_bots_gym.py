@@ -218,7 +218,7 @@ class ARBotGymEnv(gym.Env):
             time.sleep(1./240.)
         
         obs = self._get_observation()
-        done, _ = self._is_done(obs)
+        done, goal_scorer = self._is_done(obs)
         reward_main, reward_opponent = self._compute_reward()
         info = {}
         
@@ -226,7 +226,7 @@ class ARBotGymEnv(gym.Env):
         if (self.timestep >= self.max_timesteps):
             done = True
         
-        return obs, reward_main, reward_opponent, done, info
+        return obs, reward_main, reward_opponent, done, goal_scorer
     
    def _apply_action(self, robot_id, action):
        """Apply motion commands to a robot."""
@@ -391,10 +391,12 @@ class ARBotGymEnv(gym.Env):
        d_ball_goalB = self.dist(ball_pos, goalB_pos)
        d_ball_goalA = self.dist(ball_pos, goalA_pos)
 
-       if (d_ball_goalA< 0.075 or d_ball_goalB < 0.075):
-           return True, self.last_touch
+       if d_ball_goalA < 0.075:
+           return True, 1
+       elif d_ball_goalB < 0.075:
+           return True, 2
       
-       return False, -1
+       return False, 0
   
    def random_opponent(self, observation):
        """A simple random opponent policy."""
