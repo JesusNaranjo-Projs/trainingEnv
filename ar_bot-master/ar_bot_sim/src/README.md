@@ -15,6 +15,8 @@ Test the model using the test_model.py file
                      named something custom
     -p, --path PATH: Path to the model. Only used if model was moved somewhere other
                      than default.
+    -r, --redner: Enable rendering while testing
+    --rand: Test the model against a opponent that takes random actions
 
 
 
