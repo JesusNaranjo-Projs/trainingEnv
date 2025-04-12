@@ -15,6 +15,8 @@ def compute_team_rewards(env):
         euler = p.getEulerFromQuaternion(orn)
         return pos, euler[2]
 
+    # BUG: this dist returns a different result than the dist in env. Causes
+    #      the goal to trigger in reward but not is_done
     def dist(p1, p2):
         return ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
 
@@ -77,6 +79,7 @@ def compute_team_rewards(env):
         reward_A -= 100
 
     # [2] Ball movement reward
+    # BUG: env.prev_ball_pos is not being updated in step_both
     if env.prev_ball_pos is not None:
         reward_A += ball_movement_reward(env.prev_ball_pos, ball_pos, goalB_pos)
         reward_B += ball_movement_reward(env.prev_ball_pos, ball_pos, goalA_pos)
