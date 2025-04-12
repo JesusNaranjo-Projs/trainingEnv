@@ -196,7 +196,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 ppo_agent2.take_action(obs, action2)
                 
                 # Compute the reward that would occur given the actions
-                reward1, reward2 = env._compute_reward()
+                reward1, reward2 = env._compute_reward(obs)
                 done, _ = env._is_done(obs)
 
                 # saving reward and is_terminals

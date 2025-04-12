@@ -92,9 +92,6 @@ try:
         with open("trajectories.csv", mode="a", newline="") as csv_file:
             writer = csv.writer(csv_file)
             
-            #go from [(-0.05 or 0.05), (-10 or 10)] to [(0 or 1), (0 or 1)]
-            action1 = [1 if x > 0 else 0 for x in action1]
-            action2 = [1 if x > 0 else 0 for x in action2]
             writer.writerow([episode, obs, action1, action2])
 
         # Optional: Print reward and observation

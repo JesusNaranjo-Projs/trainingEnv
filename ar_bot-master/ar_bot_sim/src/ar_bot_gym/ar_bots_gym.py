@@ -45,7 +45,7 @@ class ARBotGymEnv(gym.Env):
        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32)
       
        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
-       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(28,), dtype=np.float32)
+       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(34,), dtype=np.float32)
 
        self.linear_acc_curr = None
        self.angular_acc_curr = None
@@ -69,6 +69,7 @@ class ARBotGymEnv(gym.Env):
        y = random.uniform(-0.08, 0.08)
        x = random.uniform(-0.08, 0.08)
        self.ball = p.loadURDF(sphere_path, [x, y, 0.05])
+       self.prev_ball_pos = p.getBasePositionAndOrientation(self.ball)[0]
       
        # Load goals in green in gui
        self.goal_pos1 = np.array([0.0, -0.585])
@@ -161,7 +162,7 @@ class ARBotGymEnv(gym.Env):
         
         obs = self._get_observation()
         done, _ = self._is_done(obs)
-        reward_main, reward_opponent = self._compute_reward(done)
+        reward_main, reward_opponent = self._compute_reward(obs)
         
         info = {}
         
@@ -176,6 +177,8 @@ class ARBotGymEnv(gym.Env):
   
    def step_both(self, action1, action2):
         """Apply actions to both robots and return state, reward, done, and info."""
+        
+        self.prev_ball_pos = p.getBasePositionAndOrientation(self.ball)[0]
 
         angular_acc_delta1, linear_acc_delta1 = action1
         angular_acc_delta2, linear_acc_delta2 = action2
@@ -219,7 +222,7 @@ class ARBotGymEnv(gym.Env):
         
         obs = self._get_observation()
         done, goal_scorer = self._is_done(obs)
-        reward_main, reward_opponent = self._compute_reward()
+        reward_main, reward_opponent = self._compute_reward(obs)
         info = {}
         
         self.timestep += 1
@@ -256,7 +259,7 @@ class ARBotGymEnv(gym.Env):
    def _get_observation(self):
        """Get LiDAR readings and robot positions for both robots."""
        lidar1 = self._simulate_lidar(self.robot1_id)
-       lidar2 = self._simulate_lidar(self.robot2_id) 
+       lidar2 = self._simulate_lidar(self.robot2_id)
        pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
        pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
        ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
@@ -281,10 +284,8 @@ class ARBotGymEnv(gym.Env):
        angle_to_turn = (angle_to_turn + np.pi) % (2 * np.pi) - np.pi
        angle_to_turn2 = (angle_to_turn2 + np.pi) % (2 * np.pi) - np.pi
 
-       # 0-8 are lidar1, 9-14 are x,y,oobot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
-    #    obs = np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
-    #    print(obs.shape)
-       return np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
+       # 0-8 are lidar1, 9-11 are x,y,angle, 12-20 are lidar2, 21-23 are x,y,angle of robot2, 24-25 are ball x,y, 26-27 are prev ball x,y, 28-29 are dist to goals, 30-31 is goalpos1, 32-33 is goalpos2
+       return np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], self.prev_ball_pos[:2], dist_ball_goal1, dist_ball_goal2, goal_pos1[:2], goal_pos2[:2]))
    
    #TODO: check for accuracy
    def _simulate_lidar(self, robot_id):
@@ -368,8 +369,8 @@ class ARBotGymEnv(gym.Env):
        return np.linalg.norm(np.array(p1) - np.array(p2))
   
    #TODO: needs to be changed with the reward function(prithvi)
-   def _compute_reward(self):
-        return compute_team_rewards(self)
+   def _compute_reward(self, obs):
+        return compute_team_rewards(obs)
 
    """ Checks if the episode is done, specifically if the ball has reached either goal
        Returns a flag if epsiode is done as well as an int for each robot
@@ -382,14 +383,8 @@ class ARBotGymEnv(gym.Env):
    """
    def _is_done(self, obs):
        """Check if the episode is done."""
-       ball = obs[30:32]
-
-       
-       ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
-       goalA_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos1)
-       goalB_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
-       d_ball_goalB = self.dist(ball_pos, goalB_pos)
-       d_ball_goalA = self.dist(ball_pos, goalA_pos)
+       d_ball_goalB = obs[28]
+       d_ball_goalA = obs[29]
 
        if d_ball_goalA < 0.075:
            return True, 1
