@@ -9,6 +9,7 @@ parser.add_argument("-n", "--name")
 parser.add_argument("-p", "--path")
 parser.add_argument("-r", "--render", action="store_true", default=False)
 parser.add_argument("--rand", action="store_true", default=False)
+parser.add_argument("--baseline", action="store_true", default=False)
 
 args = parser.parse_args()
 
@@ -25,4 +26,4 @@ if args.path != None and args.path[-1] == "/":
     args.path = args.path[:-1]
 
 test(ARBotGymEnv, model_name=args.name, path=args.path, render=args.render,
-     rand=args.rand)
+     rand=args.rand, baseline=args.baseline)

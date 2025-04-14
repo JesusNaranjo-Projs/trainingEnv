@@ -166,20 +166,15 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     if pretrain:
         with open("trajectories.csv", "r", newline="") as csv_file:
             reader = csv.DictReader(csv_file)
+            obs, _, _ = env.reset()
         
             for row in reader:
                 # Parse csv to get episode #, obs, and actions 
                 ep = int(row["Episode"])
-                obs = row["Observation"]# Stored as string need as numpy.ndarray
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
                 action2 = row["Action2"]# Stored as string need as numpy.ndarray
-                #print(action1, action2)
-                
-                # Change strings to proper np.ndarray
-                obs = np.fromstring(obs[2:-1], sep="  ")
                 
                 # Take the actions in the PPO algo
-                #print(action1, action2)
                 if "," in action1 and action2:
                     action1 = ast.literal_eval(action1)
                     action2 = ast.literal_eval(action2)
@@ -196,8 +191,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 ppo_agent2.take_action(obs, action2)
                 
                 # Compute the reward that would occur given the actions
-                reward1, reward2 = env._compute_reward(obs)
-                done, _ = env._is_done(obs)
+                obs, reward1, reward2, done, _ = env.step_both(action1, action2)
 
                 # saving reward and is_terminals
                 ppo_agent1.buffer.rewards.append(reward1)
@@ -207,6 +201,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
                 # Update PPO agent after episode finished
                 if done:
+                    obs, _, _ = env.reset()
                     ppo_agent1.update()
                     ppo_agent2.update()
 
