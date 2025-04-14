@@ -10,7 +10,7 @@ from PPO_PyTorch.PPO import PPO, Random
 
 
 #################################### Testing ###################################
-def test(env_class, model_name=None, path=None, render=False, rand=False):
+def test(env_class, model_name=None, path=None, render=False, rand=False, baseline=False):
     print("============================================================================================")
 
     ################## hyperparameters ##################
@@ -63,9 +63,12 @@ def test(env_class, model_name=None, path=None, render=False, rand=False):
     run_num_pretrained = 0      #### set this to load a particular checkpoint num
 
     # initialize a PPO agent
-    ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    if not baseline:
+        ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    else:
+        ppo_agent1 = Random(random_seed)
     
-    if not rand:
+    if not rand and not baseline:
         ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
     else:
         ppo_agent2 = Random(random_seed)
@@ -84,18 +87,19 @@ def test(env_class, model_name=None, path=None, render=False, rand=False):
         checkpoint_path1 = directory + "1" + model_name
         checkpoint_path2 = directory + "2" + model_name
 
-    ppo_agent1.load(checkpoint_path1)
+    if not baseline:
+        ppo_agent1.load(checkpoint_path1)
     
-    if not rand:
+    if not rand and not baseline:
         ppo_agent2.load(checkpoint_path2)
 
     print("--------------------------------------------------------------------------------------------")
 
-    test_running_reward1 = 0
+    test_running_rewards1 = []
     num_wins1 = 0 # wins are defined as having a higher total reward
     num_goals1 = 0
     
-    test_running_reward2 = 0
+    test_running_rewards2 = []
     num_wins2 = 0 # wins are defined as having a higher total reward
     num_goals2 = 0
     
@@ -123,8 +127,9 @@ def test(env_class, model_name=None, path=None, render=False, rand=False):
                 break
 
         # clear buffer
-        ppo_agent1.buffer.clear()
-        if not rand:
+        if not baseline:
+            ppo_agent1.buffer.clear()
+        if not rand and not baseline:
             ppo_agent2.buffer.clear()
             
         if ep_reward1 > ep_reward2:
@@ -137,8 +142,8 @@ def test(env_class, model_name=None, path=None, render=False, rand=False):
         elif goal_scorer == 2:
             num_goals2 += 1
 
-        test_running_reward1 +=  ep_reward1
-        test_running_reward2 +=  ep_reward2
+        test_running_rewards1.append(ep_reward1)
+        test_running_rewards2.append(ep_reward2)
         print('Episode: {} \t\t Reward 1: {}'.format(ep, round(ep_reward1, 2)))
         print('Episode: {} \t\t Reward 2: {}'.format(ep, round(ep_reward2, 2)))
 
@@ -147,17 +152,22 @@ def test(env_class, model_name=None, path=None, render=False, rand=False):
     print("============================================================================================")
 
     
-    avg_test_reward1 = test_running_reward1 / total_test_episodes
-    avg_test_reward2 = test_running_reward2 / total_test_episodes
+    avg_test_reward1 = np.mean(test_running_rewards1)
+    avg_test_reward2 = np.mean(test_running_rewards2)
     avg_test_reward1 = round(avg_test_reward1, 2)
     avg_test_reward2 = round(avg_test_reward2, 2)
-    print("average test reward 1: " + str(avg_test_reward1))
-    print("average test reward 2: " + str(avg_test_reward2))
-    print("winrate for agent 1: " + str(num_wins1 / total_test_episodes))
-    print("num goals scored for agent 1: " + str(num_goals1))
-    print("winrate for agent 2: " + str(num_wins2 / total_test_episodes))
-    print("num goals scored for agent 2: " + str(num_goals2))
-    print("average timesteps per episode: " + str(num_timesteps / total_test_episodes))
+    std1 = round(np.std(test_running_rewards1), 2)
+    std2 = round(np.std(test_running_rewards2), 2)
+
+    print(f"average test reward 1: {avg_test_reward1}")
+    print(f"standard deviation 1: {std1}")
+    print(f"average test reward 2: {avg_test_reward2}")
+    print(f"standard deviation 2: {std2}")
+    print(f"winrate for agent 1: {num_wins1 / total_test_episodes}")
+    print(f"num goals scored for agent 1: {num_goals1}")
+    print(f"winrate for agent 2: {num_wins2 / total_test_episodes}")
+    print(f"num goals scored for agent 2: {num_goals2}")
+    print(f"average timesteps per episode: {num_timesteps / total_test_episodes}")
 
     print("============================================================================================")
 
