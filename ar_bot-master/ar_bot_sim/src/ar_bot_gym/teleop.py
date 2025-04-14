@@ -93,6 +93,7 @@ try:
             writer = csv.writer(csv_file)
             
             #go from [(-0.05 or 0.05), (-10 or 10)] to [(0 or 1), (0 or 1)]
+            # TODO: Change to range of 0-1 so not moving is a 0.5
             action1 = [1 if x > 0 else 0 for x in action1]
             action2 = [1 if x > 0 else 0 for x in action2]
             writer.writerow([episode, obs, action1, action2])
