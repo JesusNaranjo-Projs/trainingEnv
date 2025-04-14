@@ -49,6 +49,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     lr_critic = 0.001       # learning rate for critic network
 
     random_seed = 0         # set random seed if required (0 = no random seed)
+    replay_chance = 0.1     # Set chance to use a replay of a trajectory
     #####################################################
 
     print("training environment name : " + env_name)
@@ -226,6 +227,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
     time_step = 0
     i_episode = 0
+    
+    trajectories_file = open("trajectories.csv", "r")
+    trajectories = csv.DictReader(trajectories_file)
 
     # training loop
     while time_step <= max_training_timesteps:
@@ -233,11 +237,34 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
         state, _, _ = env.reset()
         current_ep_reward1 = 0
         current_ep_reward2 = 0
+        # rng = np.random.rand()
+        rng = 10 # Set it to this so this is disabled until it is fixed
 
         for t in range(1, max_ep_len+1):
             # select action with policy
-            action1 = ppo_agent1.select_action(state)
-            action2 = ppo_agent2.select_action(state)
+            if rng < replay_chance:
+                row = next(trajectories)
+                action1 = row["Action1"]# Stored as string need as numpy.ndarray
+                action2 = row["Action2"]# Stored as string need as numpy.ndarray
+                
+                # Take the actions in the PPO algo
+                if "," in action1 and action2:
+                    action1 = ast.literal_eval(action1)
+                    action2 = ast.literal_eval(action2)
+                else:
+                    action1 = np.fromstring(action1.strip("[]"), sep=' ')
+                    action2 = np.fromstring(action2.strip("[]"), sep=' ')
+
+                # print(action1, action2)
+
+                action1 = np.array(action1, dtype=np.float32)
+                action2 = np.array(action2, dtype=np.float32)
+
+                ppo_agent1.take_action(obs, action1)
+                ppo_agent2.take_action(obs, action2)
+            else:
+                action1 = ppo_agent1.select_action(state)
+                action2 = ppo_agent2.select_action(state)
             state, reward1, reward2, done, _ = env.step_both(action1, action2)
 
             # saving reward and is_terminals
@@ -305,6 +332,8 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
             # break; if the episode is over
             if done:
+                # Check if file has been exhausted (reset if so)
+                
                 break
 
         print_running_reward1 += current_ep_reward1
