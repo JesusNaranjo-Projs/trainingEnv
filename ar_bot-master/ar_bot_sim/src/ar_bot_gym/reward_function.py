@@ -1,7 +1,8 @@
 import math
+import numpy as np
 import pybullet as p
 
-def compute_team_rewards(obs):
+def compute_team_rewards(env):
     """
     Compute reward_A and reward_B based on the state of the environment `env`.
     Assumes env has:
@@ -16,7 +17,7 @@ def compute_team_rewards(obs):
         return pos, euler[2]
 
     def dist(p1, p2):
-        return ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
+        return np.linalg.norm(np.array(p1) - np.array(p2))
 
     def angle_between(v1, v2):
         dot = v1[0]*v2[0] + v1[1]*v2[1]
@@ -56,13 +57,11 @@ def compute_team_rewards(obs):
 
     # --- Get positions and orientations from obs ---
     # 0-8 are lidar1, 9-11 are x,y,angle, 12-20 are lidar2, 21-23 are x,y,angle of robot2, 24-25 are ball x,y, 26-27 are prev ball x,y, 28-29 are dist to goals, 30-31 is goalpos1, 32-33 is goalpos2
-    ball_pos = obs[24:26]
-    goalA_pos = obs[30:32]
-    goalB_pos = obs[32:34]
-    robotA_pos = obs[9:11]
-    robotB_pos = obs[21:23]
-    
-    prev_ball_pos = obs[26:28]
+    ball_pos, _ = p.getBasePositionAndOrientation(env.ball)
+    goalA_pos, _ = p.getBasePositionAndOrientation(env.real_goal_pos1)
+    goalB_pos, _ = p.getBasePositionAndOrientation(env.real_goal_pos2)
+    robotA_pos, yawA = get_pos_yaw(env.robot1_id)
+    robotB_pos, yawB = get_pos_yaw(env.robot2_id)
 
     d_A_ball = dist(robotA_pos, ball_pos)
     d_B_ball = dist(robotB_pos, ball_pos)
@@ -80,8 +79,9 @@ def compute_team_rewards(obs):
         reward_A -= 100
 
     # [2] Ball movement reward
-    reward_A += ball_movement_reward(prev_ball_pos, ball_pos, goalB_pos)
-    reward_B += ball_movement_reward(prev_ball_pos, ball_pos, goalA_pos)
+    if env.prev_ball_pos is not None:
+        reward_A += ball_movement_reward(env.prev_ball_pos, ball_pos, goalB_pos)
+        reward_B += ball_movement_reward(env.prev_ball_pos, ball_pos, goalA_pos)
 
     # [3] Contact
     reward_A += contact_reward(d_A_ball)
