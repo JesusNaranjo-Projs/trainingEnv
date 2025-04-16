@@ -27,7 +27,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     pretrain_episodes = 10
 
     print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
+    # print_freq = 2
     log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
+    # log_freq = 2
     save_model_freq = int(1e5)          # save model frequency (in num timesteps)
 
     action_std = 0.6                    # starting std for action distribution (Multivariate Normal)
@@ -150,11 +152,11 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
     # initialize a PPO agent
     ppo_agent1 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
-    ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    # ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
 
     if (continuation):
         ppo_agent1.load(checkpoint_path1)
-        ppo_agent2.load(checkpoint_path2)
+        # ppo_agent2.load(checkpoint_path2)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -173,43 +175,42 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 # Parse csv to get episode #, obs, and actions 
                 ep = int(row["Episode"])
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
-                action2 = row["Action2"]# Stored as string need as numpy.ndarray
+                # action2 = row["Action2"]# Stored as string need as numpy.ndarray
                 
                 # Take the actions in the PPO algo
-                if "," in action1 and action2:
+                if "," in action1:
                     action1 = ast.literal_eval(action1)
-                    action2 = ast.literal_eval(action2)
+                    # action2 = ast.literal_eval(action2)
                 else:
                     action1 = np.fromstring(action1.strip("[]"), sep=' ')
-                    action2 = np.fromstring(action2.strip("[]"), sep=' ')
+                    # # action2 = np.fromstring(action2.strip("[]"), sep=' ')
 
                 # print(action1, action2)
 
                 action1 = np.array(action1, dtype=np.float32)
-                action2 = np.array(action2, dtype=np.float32)
+                # action2 = np.array(action2, dtype=np.float32)
 
                 ppo_agent1.take_action(obs, action1)
-                ppo_agent2.take_action(obs, action2)
+                # ppo_agent2.take_action(obs, action2)
                 
                 # Compute the reward that would occur given the actions
-                obs, reward1, reward2, done, _ = env.step_both(action1, action2)
-
+                obs, reward1, done, info = env.step(action1, 1)
                 # saving reward and is_terminals
                 ppo_agent1.buffer.rewards.append(reward1)
                 ppo_agent1.buffer.is_terminals.append(done)
-                ppo_agent2.buffer.rewards.append(reward2)
-                ppo_agent2.buffer.is_terminals.append(done)
+                # ppo_agent2.buffer.rewards.append(reward2)
+                # ppo_agent2.buffer.is_terminals.append(done)
 
                 # Update PPO agent after episode finished
                 if done:
                     obs, _, _ = env.reset()
                     ppo_agent1.update()
-                    ppo_agent2.update()
+                    # ppo_agent2.update()
 
         ppo_agent1.buffer.clear()
-        ppo_agent2.buffer.clear()
+        # ppo_agent2.buffer.clear()
         ppo_agent1.save(checkpoint_path1)
-        ppo_agent2.save(checkpoint_path2)
+        # ppo_agent2.save(checkpoint_path2)
         print("Finished pretraining")
 
     # logging file
@@ -218,11 +219,11 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
     # printing and logging variables
     print_running_reward1 = 0
-    print_running_reward2 = 0
+    # print_running_reward2 = 0
     print_running_episodes = 0
 
     log_running_reward1 = 0
-    log_running_reward2 = 0
+    # log_running_reward2 = 0
     log_running_episodes = 0
 
     time_step = 0
@@ -235,25 +236,25 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     while time_step <= max_training_timesteps:
 
         current_ep_reward1 = 0
-        current_ep_reward2 = 0
-        
+        # current_ep_reward2 = 0
+        # rng = np.random.rand()
         if replay:
             rng = np.random.rand()
         
         # Replay has been chosen, set up the state before training
-        if rng < replay_chance:
-            row = next(trajectories, None)
-            
-            if not row:
-                # Reached the end of the file, reset file and continue
-                trajectories_file.seek(0)
-                trajectories = csv.DictReader(trajectories_file)
+            if rng < replay_chance:
                 row = next(trajectories, None)
             
+                if not row:
+                    # Reached the end of the file, reset file and continue
+                    trajectories_file.seek(0)
+                    trajectories = csv.DictReader(trajectories_file)
+                    row = next(trajectories, None)
+            
             # Need to set the ball's position so its not random
-            x = float(row["BallX"])
-            y = float(row["BallY"])
-            env.set_initial_ball_pos((x, y))
+                x = float(row["BallX"])
+                y = float(row["BallY"])
+                env.set_initial_ball_pos((x, y))
         
         state, _, _ = env.reset()
 
@@ -269,82 +270,81 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                     trajectories = csv.DictReader(trajectories_file)
                     
                     ppo_agent1.buffer.clear()
-                    ppo_agent2.buffer.clear()
+                    # ppo_agent2.buffer.clear()
                     break
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
-                action2 = row["Action2"]# Stored as string need as numpy.ndarray
+                # action2 = row["Action2"]# Stored as string need as numpy.ndarray
                 
                 # Take the actions in the PPO algo
-                if "," in action1 and action2:
+                if "," in action1:
                     action1 = ast.literal_eval(action1)
-                    action2 = ast.literal_eval(action2)
+                    # action2 = ast.literal_eval(action2)
                 else:
                     action1 = np.fromstring(action1.strip("[]"), sep=' ')
-                    action2 = np.fromstring(action2.strip("[]"), sep=' ')
+                    # action2 = np.fromstring(action2.strip("[]"), sep=' ')
 
                 # print(action1, action2)
 
                 action1 = np.array(action1, dtype=np.float32)
-                action2 = np.array(action2, dtype=np.float32)
+                # action2 = np.array(action2, dtype=np.float32)
 
                 ppo_agent1.take_action(state, action1)
-                ppo_agent2.take_action(state, action2)
+                # ppo_agent2.take_action(state, action2)
             else:
                 action1 = ppo_agent1.select_action(state)
-                action2 = ppo_agent2.select_action(state)
-            state, reward1, reward2, done, _ = env.step_both(action1, action2)
+                # action2 = ppo_agent2.select_action(state)
+            state, reward1, done, info = env.step(action1)
 
             # saving reward and is_terminals
             ppo_agent1.buffer.rewards.append(reward1)
             ppo_agent1.buffer.is_terminals.append(done)
-            ppo_agent2.buffer.rewards.append(reward2)
-            ppo_agent2.buffer.is_terminals.append(done)
+            # ppo_agent2.buffer.rewards.append(reward2)
+            # ppo_agent2.buffer.is_terminals.append(done)
 
             time_step +=1
             current_ep_reward1 += reward1
-            current_ep_reward2 += reward2
 
             # update PPO agent
             if time_step % update_timestep == 0:
                 ppo_agent1.update()
-                ppo_agent2.update()
+                # ppo_agent2.update()
 
             # if continuous action space; then decay action std of ouput action distribution
             if has_continuous_action_space and time_step % action_std_decay_freq == 0:
                 ppo_agent1.decay_action_std(action_std_decay_rate, min_action_std)
-                ppo_agent2.decay_action_std(action_std_decay_rate, min_action_std)
+                # ppo_agent2.decay_action_std(action_std_decay_rate, min_action_std)
 
             # log in logging file
             if time_step % log_freq == 0:
 
                 # log average reward till last episode
-                log_avg_reward1 = log_running_reward1 / log_running_episodes
-                log_avg_reward2 = log_running_reward2 / log_running_episodes
+                log_avg_reward1 = log_running_reward1 / (log_running_episodes)
+                # # log_avg_reward2 = log_running_reward2 / log_running_episodes
                 log_avg_reward1 = round(log_avg_reward1, 4)
-                log_avg_reward2 = round(log_avg_reward2, 4)
+                # # log_avg_reward2 = round(log_avg_reward2, 4)
 
                 log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward1))
-                log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward2))
+                # log_f.write('{},{},{}\n'.format(i_episode, time_step, log_avg_reward2))
                 log_f.flush()
 
                 log_running_reward1 = 0
-                log_running_reward2 = 0
+                # log_running_reward2 = 0
                 log_running_episodes = 0
 
             # printing average reward
             if time_step % print_freq == 0:
 
                 # print average reward till last episode
-                print_avg_reward1 = print_running_reward1 / print_running_episodes
-                print_avg_reward2 = print_running_reward2 / print_running_episodes
+                print_avg_reward1 = print_running_reward1 / (print_running_episodes)
+                # # print_avg_reward2 = print_running_reward2 / print_running_episodes
                 print_avg_reward1 = round(print_avg_reward1, 2)
-                print_avg_reward2 = round(print_avg_reward2, 2)
+                # # print_avg_reward2 = round(print_avg_reward2, 2)
 
                 print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward1))
-                print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward2))
+                # print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step, print_avg_reward2))
 
                 print_running_reward1 = 0
-                print_running_reward2 = 0
+                # print_running_reward2 = 0
                 print_running_episodes = 0
 
             # save model weights
@@ -352,7 +352,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 print("--------------------------------------------------------------------------------------------")
                 print("saving model")
                 ppo_agent1.save(checkpoint_path1)
-                ppo_agent2.save(checkpoint_path2)
+                # ppo_agent2.save(checkpoint_path2)
                 print("model saved")
                 print("Elapsed Time  : ", datetime.now().replace(microsecond=0) - start_time)
                 print("--------------------------------------------------------------------------------------------")
@@ -362,11 +362,11 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 break
 
         print_running_reward1 += current_ep_reward1
-        print_running_reward2 += current_ep_reward2
+        # # print_running_reward2 += current_ep_reward2
         print_running_episodes += 1
 
         log_running_reward1 += current_ep_reward1
-        log_running_reward2 += current_ep_reward2
+        # # log_running_reward2 += current_ep_reward2
         log_running_episodes += 1
 
         i_episode += 1
@@ -384,7 +384,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     print("--------------------------------------------------------------------------------------------")
     print("saving model")
     ppo_agent1.save(checkpoint_path1)
-    ppo_agent2.save(checkpoint_path2)
+    # ppo_agent2.save(checkpoint_path2)
     print("model saved")
     print("Elapsed Time  : ", datetime.now().replace(microsecond=0) - start_time)
     print("--------------------------------------------------------------------------------------------")

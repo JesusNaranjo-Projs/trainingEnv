@@ -68,10 +68,10 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
     else:
         ppo_agent1 = Random(random_seed)
     
-    if not rand and not baseline:
-        ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
-    else:
-        ppo_agent2 = Random(random_seed)
+    # if not rand and not baseline:
+        # ppo_agent2 = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    # else:
+        # ppo_agent2 = Random(random_seed)
     
 
     if path == None:
@@ -90,8 +90,8 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
     if not baseline:
         ppo_agent1.load(checkpoint_path1)
     
-    if not rand and not baseline:
-        ppo_agent2.load(checkpoint_path2)
+    # if not rand and not baseline:
+        # ppo_agent2.load(checkpoint_path2)
 
     print("--------------------------------------------------------------------------------------------")
 
@@ -99,7 +99,7 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
     num_wins1 = 0 # wins are defined as having a higher total reward
     num_goals1 = 0
     
-    test_running_rewards2 = []
+    # test_running_rewards2 = []
     num_wins2 = 0 # wins are defined as having a higher total reward
     num_goals2 = 0
     
@@ -107,15 +107,15 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
 
     for ep in range(1, total_test_episodes+1):
         ep_reward1 = 0
-        ep_reward2 = 0
+        # ep_reward2 = 0
         state, _, _  = env.reset()
 
         for t in range(1, max_ep_len+1):
             action1 = ppo_agent1.select_action(state)
-            action2 = ppo_agent2.select_action(state)
-            state, reward1, reward2, done, goal_scorer = env.step_both(action1, action2)
+            # action2 = ppo_agent2.select_action(state)
+            state, reward1, done, goal_scorer = env.step(action1)
             ep_reward1 += reward1
-            ep_reward2 += reward2
+            # ep_reward2 += reward2
             
             num_timesteps += 1
 
@@ -129,23 +129,17 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
         # clear buffer
         if not baseline:
             ppo_agent1.buffer.clear()
-        if not rand and not baseline:
-            ppo_agent2.buffer.clear()
-            
-        if ep_reward1 > ep_reward2:
-            num_wins1 += 1
-        elif ep_reward2 > ep_reward1:
-            num_wins2 += 1
+        # if not rand and not baseline:
+            # ppo_agent2.buffer.clear()
         
-        if goal_scorer == 1:
-            num_goals1 += 1
-        elif goal_scorer == 2:
-            num_goals2 += 1
+        num_wins1 += 1
+        num_goals1 += 1
+        
 
         test_running_rewards1.append(ep_reward1)
-        test_running_rewards2.append(ep_reward2)
+        # test_running_rewards2.append(ep_reward2)
         print('Episode: {} \t\t Reward 1: {}'.format(ep, round(ep_reward1, 2)))
-        print('Episode: {} \t\t Reward 2: {}'.format(ep, round(ep_reward2, 2)))
+        # print('Episode: {} \t\t Reward 2: {}'.format(ep, round(ep_reward2, 2)))
 
     env.close()
 
@@ -153,25 +147,23 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
 
     
     avg_test_reward1 = np.mean(test_running_rewards1)
-    avg_test_reward2 = np.mean(test_running_rewards2)
+    # avg_test_reward2 = np.mean(test_running_rewards2)
     avg_test_reward1 = round(avg_test_reward1, 2)
-    avg_test_reward2 = round(avg_test_reward2, 2)
+    # avg_test_reward2 = round(avg_test_reward2, 2)
     std1 = round(np.std(test_running_rewards1), 2)
-    std2 = round(np.std(test_running_rewards2), 2)
+    # std2 = round(np.std(test_running_rewards2), 2)
 
     print(f"average test reward 1: {avg_test_reward1}")
     print(f"standard deviation 1: {std1}")
-    print(f"average test reward 2: {avg_test_reward2}")
-    print(f"standard deviation 2: {std2}")
+    # print(f"average test reward 2: {avg_test_reward2}")
+    # print(f"standard deviation 2: {std2}")
     print(f"winrate for agent 1: {num_wins1 / total_test_episodes}")
     print(f"num goals scored for agent 1: {num_goals1}")
-    print(f"winrate for agent 2: {num_wins2 / total_test_episodes}")
-    print(f"num goals scored for agent 2: {num_goals2}")
     print(f"average timesteps per episode: {num_timesteps / total_test_episodes}")
 
     print("============================================================================================")
 
-    return avg_test_reward1, avg_test_reward2
+    return avg_test_reward1
 
 
 if __name__ == '__main__':

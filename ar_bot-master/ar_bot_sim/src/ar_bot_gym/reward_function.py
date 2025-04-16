@@ -46,7 +46,7 @@ def compute_team_rewards(env):
         angle = angle_between(facing, to_ball)
         if angle < math.pi / 4:
             return 0.2 / (dist(robot_pos, ball_pos) + 1e-5)
-        return 0.0
+        return 100
 
     def ball_movement_reward(prev_ball, curr_ball, goal_pos):
         dx, dy = curr_ball[0] - prev_ball[0], curr_ball[1] - prev_ball[1]
@@ -61,10 +61,10 @@ def compute_team_rewards(env):
     goalA_pos, _ = p.getBasePositionAndOrientation(env.real_goal_pos1)
     goalB_pos, _ = p.getBasePositionAndOrientation(env.real_goal_pos2)
     robotA_pos, yawA = get_pos_yaw(env.robot1_id)
-    robotB_pos, yawB = get_pos_yaw(env.robot2_id)
+    # robotB_pos, yawB = get_pos_yaw(env.robot2_id)
 
     d_A_ball = dist(robotA_pos, ball_pos)
-    d_B_ball = dist(robotB_pos, ball_pos)
+    # d_B_ball = dist(robotB_pos, ball_pos)
     d_ball_goalA = dist(ball_pos, goalA_pos)
     d_ball_goalB = dist(ball_pos, goalB_pos)
 
@@ -73,19 +73,19 @@ def compute_team_rewards(env):
     # [1] Scoring
     if d_ball_goalB < 0.075:
         reward_A += 100
-        reward_B -= 100
+        # reward_B -= 100
     elif d_ball_goalA < 0.075:
-        reward_B += 100
+        # reward_B += 100
         reward_A -= 100
 
     # [2] Ball movement reward
     if env.prev_ball_pos is not None:
         reward_A += ball_movement_reward(env.prev_ball_pos, ball_pos, goalB_pos)
-        reward_B += ball_movement_reward(env.prev_ball_pos, ball_pos, goalA_pos)
+        # reward_B += ball_movement_reward(env.prev_ball_pos, ball_pos, goalA_pos)
 
     # [3] Contact
     reward_A += contact_reward(d_A_ball)
-    reward_B += contact_reward(d_B_ball)
+    # reward_B += contact_reward(d_B_ball)
 
     # # [4] Behind ball alignment
     # reward_A += 1.5 * alignment_reward(robotA_pos, ball_pos, goalB_pos)
@@ -96,11 +96,11 @@ def compute_team_rewards(env):
     # reward_B += 0.5 * facing_ball_reward(robotB_pos, yawB, ball_pos)
 
     # # [6] Approach reward (encouraging getting close *while* facing)
-    # reward_A += approach_reward(robotA_pos, yawA, ball_pos)
+    reward_A += approach_reward(robotA_pos, yawA, ball_pos)
     # reward_B += approach_reward(robotB_pos, yawB, ball_pos)
 
     # # [7] Time penalty
     # reward_A -= 0.01
     # reward_B -= 0.01
 
-    return reward_A, reward_B
+    return reward_A

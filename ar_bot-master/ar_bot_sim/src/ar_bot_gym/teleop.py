@@ -20,12 +20,6 @@ key_mapping_robot1 = {
     ord('d'): (0, -10)    # Turn right
 }
 
-key_mapping_robot2 = {
-    p.B3G_UP_ARROW: (0.05, 0),    # Move forward
-    p.B3G_DOWN_ARROW: (-0.05, 0), # Move backward
-    p.B3G_LEFT_ARROW: (0, 10),  # Turn left
-    p.B3G_RIGHT_ARROW: (0, -10) # Turn right
-}
 
 def get_keyboard_action():
     """Reads keyboard input and converts it into actions for both robots."""
@@ -34,19 +28,15 @@ def get_keyboard_action():
     
     # Initialize actions to zero
     action1 = np.array([0, 0], dtype=np.float32)  
-    action2 = np.array([0, 0], dtype=np.float32)
 
     # Process inputs for Robot 1
     for key, (lin, ang) in key_mapping_robot1.items():
         if key in keys and keys[key] & p.KEY_IS_DOWN:
             action1 += np.array([lin, ang], dtype=np.float32)  # Accumulate movements
 
-    # Process inputs for Robot 2
-    for key, (lin, ang) in key_mapping_robot2.items():
-        if key in keys and keys[key] & p.KEY_IS_DOWN:
-            action2 += np.array([lin, ang], dtype=np.float32)  # Accumulate movements
+    action1 = np.where(action1 > 0, 1, np.where(action1 < 0, 0, 0.5))
 
-    return action1, action2 # Combine both robots' actions
+    return action1 # Combine both robots' actions
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -55,7 +45,7 @@ ep = int(os.getenv("episode")) + 1
 if not os.path.exists("trajectories.csv"):
     with open("trajectories.csv", "w", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["Episode","BallX", "BallY", "Observation", "Action1", "Action2"])
+        writer.writerow(["Episode","BallX", "BallY", "Observation", "Action1"])
     if ep != 0:
         ep = 0
         dotenv.set_key(dotenv_file, "episode", "0")
@@ -64,13 +54,13 @@ obs, _, (x, y) = env.reset()
 
 output = StringIO()
 writer = csv.writer(output)
-writer.writerow([ep, x, y, obs, "[0. 0.]", "[0. 0.]"])
+writer.writerow([ep, x, y, obs, "[0. 0.]"])
 try:
     while True:
         # Take action first so obs that is stored is state after actions are taken
-        action1, action2 = get_keyboard_action()
-        obs, reward, reward_opp, done, info = env.step_both(action1, action2)
-        writer.writerow([ep, x, y, obs, action1, action2])
+        action1 = get_keyboard_action()
+        obs, reward, done, info = env.step(action1, 1)
+        writer.writerow([ep, x, y, obs, action1])
 
         # Optional: Print reward and observation
         #print(f"Reward: {reward}, Done: {done}")
@@ -86,7 +76,7 @@ try:
             ep += 1
             print("Episode done")
             obs, _, (x, y) = env.reset()
-            writer.writerow([ep, x, y, obs, "[0. 0.]", "[0. 0.]"])
+            writer.writerow([ep, x, y, obs, "[0. 0.]"])
         
         time.sleep(1./60.)  # Maintain a stable refresh rate
 

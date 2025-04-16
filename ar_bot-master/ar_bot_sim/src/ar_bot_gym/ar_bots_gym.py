@@ -46,7 +46,7 @@ class ARBotGymEnv(gym.Env):
        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32)
       
        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
-       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(28,), dtype=np.float32)
+       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(16,), dtype=np.float32)
 
        self.linear_acc_curr = None
        self.angular_acc_curr = None
@@ -86,11 +86,11 @@ class ARBotGymEnv(gym.Env):
        # Robot 1 is at the top of the arena
        # Robot 2 is at the bottom of the arena
        self.robot1_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos1, initial_orientation1)
-       self.robot2_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos2, initial_orientation2)
+    #    self.robot2_id = p.loadURDF(self.path + "agent/cozmo.urdf", self.start_pos2, initial_orientation2)
 
 
        self.robot1_dist_to_ball = 0.30
-       self.robot2_dist_to_ball = 0.30
+    #    self.robot2_dist_to_ball = 0.30
       
        self.timestep = 0
        self.angular_acc_curr = 0.0
@@ -128,7 +128,7 @@ class ARBotGymEnv(gym.Env):
            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
   
   
-   def step(self, action, agent_id):
+   def step(self, action, agent_id=None):
         """Apply actions to both robots and return state, reward, done, and info."""
         #TODO: tune, current duration is equal to 250hz rn
 
@@ -158,36 +158,31 @@ class ARBotGymEnv(gym.Env):
 
         #print("realAct", realAct)
         
-        if agent_id == 1:
-            self._apply_action(self.robot1_id, realAct)
-        else:
-            self._apply_action(self.robot2_id, realAct)
+
+        self._apply_action(self.robot1_id, realAct)
+       
         p.stepSimulation()
 
         contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
-        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+        # contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
 
         if contact_points1:  # If robot1 is in contact with the ball
             self.last_touch = 1
-        elif contact_points2:  # If robot2 is in contact with the ball
-            self.last_touch = 2
+        # elif contact_points2:  # If robot2 is in contact with the ball
+            # self.last_touch = 2
         if self.gui:
             time.sleep(1./240.)
         
         obs = self._get_observation()
         done, _ = self._is_done(obs)
-        reward_main, reward_opponent = self._compute_reward(self)
-        
+        reward_main= self._compute_reward(self)
         info = {}
         
         self.timestep += 1
         if (self.timestep >= self.max_timesteps):
             done = True
-    
-        if agent_id == 1:
-            return obs, reward_main, done, info
-        else:
-            return obs, reward_opponent, done, info
+     
+        return obs, reward_main, done, info
   
    def step_both(self, action1, action2):
         """Apply actions to both robots and return state, reward, done, and info."""
@@ -221,11 +216,11 @@ class ARBotGymEnv(gym.Env):
         realAct2 = np.clip([self.linear_acc_curr2, self.angular_acc_curr2], [-28, -0.4], [28, 0.4])
  
         self._apply_action(self.robot1_id, realAct1)
-        self._apply_action(self.robot2_id, realAct2)
+        # self._apply_action(self.robot2_id, realAct2)
         p.stepSimulation()
 
         contact_points1 = p.getContactPoints(self.robot1_id, self.ball)
-        contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
+        # contact_points2 = p.getContactPoints(self.robot2_id, self.ball)
 
         if contact_points1:  # If robot1 is in contact with the ball
             self.last_touch = 1
@@ -273,9 +268,9 @@ class ARBotGymEnv(gym.Env):
    def _get_observation(self):
        """Get LiDAR readings and robot positions for both robots."""
        lidar1 = self._simulate_lidar(self.robot1_id)
-       lidar2 = self._simulate_lidar(self.robot2_id) 
+    #    lidar2 = self._simulate_lidar(self.robot2_id) 
        pos1, orn1 = p.getBasePositionAndOrientation(self.robot1_id)
-       pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
+    #    pos2, orn2 = p.getBasePositionAndOrientation(self.robot2_id)
        ball_pos, _ =  p.getBasePositionAndOrientation(self.ball)
         
         #gives the lidar position and orientation for each robot plus the balls position
@@ -287,21 +282,21 @@ class ARBotGymEnv(gym.Env):
 
        ball_x, ball_y = ball_pos[:2]
        robot1x, robot1y = pos1[:2]
-       robot2x, robot2y = pos2[:2]
+    #    robot2x, robot2y = pos2[:2]
        angle_to_ball1 = math.atan2(ball_y - robot1y, ball_x - robot1x)
-       angle_to_ball2 = math.atan2(ball_y - robot2y, ball_x - robot2x)
+    #    angle_to_ball2 = math.atan2(ball_y - robot2y, ball_x - robot2x)
        robot1_yaw = p.getEulerFromQuaternion(orn1)[2]
-       robot2_yaw = p.getEulerFromQuaternion(orn2)[2]
+    #    robot2_yaw = p.getEulerFromQuaternion(orn2)[2]
        angle_to_turn = angle_to_ball1 - robot1_yaw
-       angle_to_turn2 = angle_to_ball2 - robot2_yaw
+    #    angle_to_turn2 = angle_to_ball2 - robot2_yaw
 
        angle_to_turn = (angle_to_turn + np.pi) % (2 * np.pi) - np.pi
-       angle_to_turn2 = (angle_to_turn2 + np.pi) % (2 * np.pi) - np.pi
+       
 
-       # 0-8 are lidar1, 9-14 are x,y,oobot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
+    #    0-8 are lidar1, 9-14 are x,y,oobot1, 15-23 are lidar2, 24-29 are x,y,orient of robot2, 30-31 are ball x,y, 32-33 are goal1, 34-35 are goal2
     #    obs = np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
     #    print(obs.shape)
-       return np.hstack((lidar1, pos1[:2], angle_to_turn, lidar2, pos2[:2], angle_to_turn2, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
+       return np.hstack((lidar1, pos1[:2], angle_to_turn, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
    
    #TODO: check for accuracy
    def _simulate_lidar(self, robot_id):
@@ -327,7 +322,7 @@ class ARBotGymEnv(gym.Env):
 
 
    def _check_ball_in_FOV(self, obs, robot_id):
-       # 11-14 are orient of robot1, 26-29 are orient of robot2
+    #    11-14 are orient of robot1, 26-29 are orient of robot2
        ball = obs[30:32]
        if robot_id == 1:
            orient = p.getEulerFromQuaternion(obs[11:15])[2]
@@ -355,7 +350,7 @@ class ARBotGymEnv(gym.Env):
    # Check if the ball is looking at one of the corners while being close to
    # it.
    def _check_corners(self, obs, robot_id):
-       # 11-14 are orient of robot1, 26-29 are orient of robot2
+    #    11-14 are orient of robot1, 26-29 are orient of robot2
        if robot_id == 1:
            orient = p.getEulerFromQuaternion(obs[11:15])[2]
            robot_pos = obs[9:11]
