@@ -55,22 +55,22 @@ ep = int(os.getenv("episode")) + 1
 if not os.path.exists("trajectories.csv"):
     with open("trajectories.csv", "w", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["Episode", "Observation", "Action1", "Action2"])
+        writer.writerow(["Episode","BallX", "BallY", "Observation", "Action1", "Action2"])
     if ep != 0:
         ep = 0
         dotenv.set_key(dotenv_file, "episode", "0")
 
-obs, _, _ = env.reset()
+obs, _, (x, y) = env.reset()
 
 output = StringIO()
 writer = csv.writer(output)
-writer.writerow([ep, obs, "[0. 0.]", "[0. 0.]"])
+writer.writerow([ep, x, y, obs, "[0. 0.]", "[0. 0.]"])
 try:
     while True:
         # Take action first so obs that is stored is state after actions are taken
         action1, action2 = get_keyboard_action()
         obs, reward, reward_opp, done, info = env.step_both(action1, action2)
-        writer.writerow([ep, obs, action1, action2])
+        writer.writerow([ep, x, y, obs, action1, action2])
 
         # Optional: Print reward and observation
         #print(f"Reward: {reward}, Done: {done}")
@@ -85,8 +85,8 @@ try:
 
             ep += 1
             print("Episode done")
-            obs, _, _ = env.reset()
-            writer.writerow([ep, obs, "[0. 0.]", "[0. 0.]"])
+            obs, _, (x, y) = env.reset()
+            writer.writerow([ep, x, y, obs, "[0. 0.]", "[0. 0.]"])
         
         time.sleep(1./60.)  # Maintain a stable refresh rate
 

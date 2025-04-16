@@ -9,6 +9,8 @@ Test the model using the test_model.py file
     -me, --maxEp EPISODES: Set the maimum number of episodes to EPISODES
     -p, --pretrain: Pretrain the model on human trajectories. These trajectories
                     need to be in a file named trajectories.csv in this directory
+    -r, --replay: Enable the replay buffer when training. Requires a trajectories.csv
+                  file to be in this directory.
 
 # Testing Parameters (All optional):
     -n, --name NAME: Name of the model. Only used if the model being tested was

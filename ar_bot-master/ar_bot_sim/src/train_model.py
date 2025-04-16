@@ -9,6 +9,7 @@ parser.add_argument("-c", "--cont", action="store_true")
 parser.add_argument("-mt", "--maxTime", type=int)
 parser.add_argument("-me", "--maxEp", type=int)
 parser.add_argument("-p", "--pretrain", action="store_true")
+parser.add_argument("-r", "--replay", action="store_true", default=False)
 
 args = parser.parse_args()
 
@@ -19,5 +20,5 @@ if (args.cont and args.name == None):
 if (args.name != None and args.name[-4:] != ".pth"):
     args.name += ".pth"
 
-train(ARBotGymEnv, continuation=args.cont, model_name=args.name, max_ep_len=args.maxEp, max_training_timesteps=args.maxTime, pretrain=args.pretrain)
+train(ARBotGymEnv, continuation=args.cont, model_name=args.name, max_ep_len=args.maxEp, max_training_timesteps=args.maxTime, pretrain=args.pretrain, replay=args.replay)
 

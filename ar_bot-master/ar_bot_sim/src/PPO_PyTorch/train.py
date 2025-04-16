@@ -10,7 +10,7 @@ import numpy as np
 from PPO_PyTorch.PPO import PPO
 
 ################################### Training ###################################
-def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_training_timesteps=None, pretrain=None):
+def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_training_timesteps=None, pretrain=None, replay=None):
     print("============================================================================================")
 
     ####### initialize environment hyperparameters ######
@@ -49,7 +49,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     lr_critic = 0.001       # learning rate for critic network
 
     random_seed = 0         # set random seed if required (0 = no random seed)
-    replay_chance = 0.1     # Set chance to use a replay of a trajectory
+    replay_chance = .1     # Set chance to use a replay of a trajectory
     #####################################################
 
     print("training environment name : " + env_name)
@@ -234,16 +234,43 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     # training loop
     while time_step <= max_training_timesteps:
 
-        state, _, _ = env.reset()
         current_ep_reward1 = 0
         current_ep_reward2 = 0
-        # rng = np.random.rand()
-        rng = 10 # Set it to this so this is disabled until it is fixed
+        
+        if replay:
+            rng = np.random.rand()
+        
+        # Replay has been chosen, set up the state before training
+        if rng < replay_chance:
+            row = next(trajectories, None)
+            
+            if not row:
+                # Reached the end of the file, reset file and continue
+                trajectories_file.seek(0)
+                trajectories = csv.DictReader(trajectories_file)
+                row = next(trajectories, None)
+            
+            # Need to set the ball's position so its not random
+            x = float(row["BallX"])
+            y = float(row["BallY"])
+            env.set_initial_ball_pos((x, y))
+        
+        state, _, _ = env.reset()
 
         for t in range(1, max_ep_len+1):
             # select action with policy
-            if rng < replay_chance:
-                row = next(trajectories)
+            if replay and rng < replay_chance:
+                if t != 0:
+                    row = next(trajectories, None)
+                
+                if not row:
+                    # Reached end of file with unfinished episode. Clear buffers
+                    trajectories_file.seek(0)
+                    trajectories = csv.DictReader(trajectories_file)
+                    
+                    ppo_agent1.buffer.clear()
+                    ppo_agent2.buffer.clear()
+                    break
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
                 action2 = row["Action2"]# Stored as string need as numpy.ndarray
                 
@@ -260,8 +287,8 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 action1 = np.array(action1, dtype=np.float32)
                 action2 = np.array(action2, dtype=np.float32)
 
-                ppo_agent1.take_action(obs, action1)
-                ppo_agent2.take_action(obs, action2)
+                ppo_agent1.take_action(state, action1)
+                ppo_agent2.take_action(state, action2)
             else:
                 action1 = ppo_agent1.select_action(state)
                 action2 = ppo_agent2.select_action(state)
@@ -332,8 +359,6 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
             # break; if the episode is over
             if done:
-                # Check if file has been exhausted (reset if so)
-                
                 break
 
         print_running_reward1 += current_ep_reward1

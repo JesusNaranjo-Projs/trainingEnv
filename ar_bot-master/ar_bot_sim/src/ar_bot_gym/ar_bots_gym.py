@@ -36,6 +36,7 @@ class ARBotGymEnv(gym.Env):
        self.total_sum_reward_tracker = []
        self.total_timestep_tracker = []
        self.episode_reward_tracker = []
+       self.init_ball_pos = None
       
        self.client = bullet_client.BulletClient(p.GUI if gui else p.DIRECT)
        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -66,8 +67,7 @@ class ARBotGymEnv(gym.Env):
 
        # Loads the sphere above the arena drops down in the first step
        sphere_path = self.path + "env/obstacles/sphere_small.urdf"
-       y = random.uniform(-0.08, 0.08)
-       x = random.uniform(-0.08, 0.08)
+       x, y = self._get_initial_ball_pos()
        self.ball = p.loadURDF(sphere_path, [x, y, 0.05])
        self.prev_ball_pos = p.getBasePositionAndOrientation(self.ball)[0]
       
@@ -106,7 +106,21 @@ class ARBotGymEnv(gym.Env):
        p.resetSimulation()
        self._setup_simulation()
        obs = self._get_observation()
-       return obs, obs, {}
+       pos = self.init_ball_pos
+       self.init_ball_pos = None
+       return obs, obs, pos
+   
+   def _get_initial_ball_pos(self):
+       if not self.init_ball_pos:
+            y = random.uniform(-0.08, 0.08)
+            x = random.uniform(-0.08, 0.08)
+            self.init_ball_pos = (x, y)
+            return x, y
+       else:
+            return self.init_ball_pos
+    
+   def set_initial_ball_pos(self, pos):
+        self.init_ball_pos = pos
   
    def render(self, mode='human'):
        """Render the simulation by stepping through PyBullet GUI."""
