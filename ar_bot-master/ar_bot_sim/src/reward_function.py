@@ -38,7 +38,7 @@ def compute_team_rewards(env):
         return 1.0 if dot > 0 else -0.5
 
     def contact_reward(d):
-        return 2.0 if d < 0.1 else 0.0
+        return 2.0 if d < 0. else 0.0
 
     def approach_reward(robot_pos, yaw, ball_pos):
         to_ball = (ball_pos[0] - robot_pos[0], ball_pos[1] - robot_pos[1])
@@ -84,7 +84,7 @@ def compute_team_rewards(env):
         # reward_B += ball_movement_reward(env.prev_ball_pos, ball_pos, goalA_pos)
 
     # [3] Contact
-    reward_A += contact_reward(d_A_ball)
+    #reward_A += contact_reward(d_A_ball)
     # reward_B += contact_reward(d_B_ball)
 
     # # [4] Behind ball alignment
@@ -96,7 +96,16 @@ def compute_team_rewards(env):
     # reward_B += 0.5 * facing_ball_reward(robotB_pos, yawB, ball_pos)
 
     # # [6] Approach reward (encouraging getting close *while* facing)
-    reward_A += approach_reward(robotA_pos, yawA, ball_pos)
+    #reward_A += approach_reward(robotA_pos, yawA, ball_pos)
+   # print("d_ball_goalB: ", d_ball_goalB)
+    reward_A += -1 * d_ball_goalB
+
+    if abs(robotA_pos[0]) > 0.40:
+        reward_A += -1000
+    
+    if abs(robotA_pos[1]) > 0.20:
+        reward_A += -1000
+
     # reward_B += approach_reward(robotB_pos, yawB, ball_pos)
 
     # # [7] Time penalty

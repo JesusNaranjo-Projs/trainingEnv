@@ -50,7 +50,7 @@ if not os.path.exists("trajectories.csv"):
         ep = 0
         dotenv.set_key(dotenv_file, "episode", "0")
 
-obs, _, (x, y) = env.reset()
+obs, _, (x, y) = env.reset(6000)
 
 output = StringIO()
 writer = csv.writer(output)

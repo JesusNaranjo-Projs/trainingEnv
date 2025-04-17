@@ -108,7 +108,7 @@ def test(env_class, model_name=None, path=None, render=False, rand=False, baseli
     for ep in range(1, total_test_episodes+1):
         ep_reward1 = 0
         # ep_reward2 = 0
-        state, _, _  = env.reset()
+        state, _, _  = env.reset(ep)
 
         for t in range(1, max_ep_len+1):
             action1 = ppo_agent1.select_action(state)

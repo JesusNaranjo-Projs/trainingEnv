@@ -40,13 +40,13 @@ class ARBotGymEnv(gym.Env):
       
        self.client = bullet_client.BulletClient(p.GUI if gui else p.DIRECT)
        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-       self._setup_simulation()
+       self._setup_simulation(0)
        self.last_touch = -1
        # Action space: Each robot has [linear_velocity, angular_velocity] -> now only one robot
        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32)
       
        # Observation space: LiDAR readings + robot positions + ball = 32 ints i think
-       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(16,), dtype=np.float32)
+       self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(43,), dtype=np.float32)
 
        self.linear_acc_curr = None
        self.angular_acc_curr = None
@@ -58,16 +58,15 @@ class ARBotGymEnv(gym.Env):
        self.angular_acc_curr2 = None
        self.prev_ball_pos = None
       
-   def _setup_simulation(self):
+   def _setup_simulation(self, episodeNum):
        """Set up the PyBullet simulation."""
        p.setGravity(0, 0, -10)
        p.setAdditionalSearchPath(pybullet_data.getDataPath())
        p.loadURDF(self.path + "env/maps/arena/arena.urdf")
 
-
        # Loads the sphere above the arena drops down in the first step
        sphere_path = self.path + "env/obstacles/sphere_small.urdf"
-       x, y = self._get_initial_ball_pos()
+       x, y = self._get_initial_ball_pos(episodeNum)
        self.ball = p.loadURDF(sphere_path, [x, y, 0.05])
        self.prev_ball_pos = p.getBasePositionAndOrientation(self.ball)[0]
       
@@ -101,23 +100,41 @@ class ARBotGymEnv(gym.Env):
        self.angular_acc_curr2 = 0.0
       
       
-   def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+   def reset(self, episodeNum, seed: Optional[int] = None, options: Optional[dict] = None):
        """Reset the environment."""
        p.resetSimulation()
-       self._setup_simulation()
+       self._setup_simulation(episodeNum)
        obs = self._get_observation()
        pos = self.init_ball_pos
        self.init_ball_pos = None
        return obs, obs, pos
    
-   def _get_initial_ball_pos(self):
-       if not self.init_ball_pos:
-            y = random.uniform(-0.08, 0.08)
-            x = random.uniform(-0.08, 0.08)
-            self.init_ball_pos = (x, y)
-            return x, y
-       else:
-            return self.init_ball_pos
+   def _get_initial_ball_pos(self, episodeNum):
+    if not self.init_ball_pos:
+        # Calculate the radius based on episode number (increases every 1000 episodes)
+        # Start at 0.1 and increase by 0.1 every 1000 episodes up to 0.5
+        base_radius = -0.15
+        max_radius = 0.50
+        radius = min(base_radius + (episodeNum // 250) * 0.05, max_radius)
+
+        # Robot1 starts at (-0.30, 0, 0) facing right (0 degrees)
+        robot_pos = [-30, 0, 0]
+
+        # Generate random angle in front semicircle (-90 to 90 degrees)
+        angle = np.random.uniform(-np.pi/2, np.pi/2)
+        
+        # Calculate ball position using polar coordinates
+        ball_x = robot_pos[0] + radius * np.cos(angle)
+        ball_y = robot_pos[1] + radius * np.sin(angle)
+        
+        # Clamp positions to stay within arena bounds
+        ball_x = np.clip(ball_x, -0.15, 0.50)
+        ball_y = np.clip(ball_y, -0.08, 0.08)
+        
+        self.init_ball_pos = (ball_x, ball_y)
+        return ball_x, ball_y
+    else:
+        return self.init_ball_pos
     
    def set_initial_ball_pos(self, pos):
         self.init_ball_pos = pos
@@ -298,28 +315,53 @@ class ARBotGymEnv(gym.Env):
     #    print(obs.shape)
        return np.hstack((lidar1, pos1[:2], angle_to_turn, ball_pos[:2], dist_ball_goal1, dist_ball_goal2))
    
-   #TODO: check for accuracy
-   def _simulate_lidar(self, robot_id):
-       """Simulate LiDAR measurements for a robot."""
-       num_rays = 9
-       lidar_range = 1
+#    #TODO: check for accuracy
+#    def _simulate_lidar(self, robot_id):
+#        """Simulate LiDAR measurements for a robot."""
+#        num_rays = 9
+#        lidar_range = 1
       
-       pos, orn = p.getBasePositionAndOrientation(robot_id)
-       base_yaw = p.getEulerFromQuaternion(orn)[2]
+#        pos, orn = p.getBasePositionAndOrientation(robot_id)
+#        base_yaw = p.getEulerFromQuaternion(orn)[2]
       
-       ray_from = []
-       ray_to = []
+#        ray_from = []
+#        ray_to = []
       
-       for ray_angle in np.linspace(-np.pi/2, np.pi/2, num_rays):
-           angle = base_yaw + ray_angle
-           direction = np.array([np.cos(angle), np.sin(angle), 0])
-           ray_from.append(pos)
-           ray_to.append(pos + lidar_range * direction)
+#        for ray_angle in np.linspace(-np.pi/2, np.pi/2, num_rays):
+#            angle = base_yaw + ray_angle
+#            direction = np.array([np.cos(angle), np.sin(angle), 0])
+#            ray_from.append(pos)
+#            ray_to.append(pos + lidar_range * direction)
       
-       results = p.rayTestBatch(ray_from, ray_to)
-       distances = np.array([res[2] for res in results])
-       return np.clip(distances / lidar_range, 0.0, 1.0)
+#        results = p.rayTestBatch(ray_from, ray_to)
+#        distances = np.array([res[2] for res in results])
+#        return np.clip(distances / lidar_range, 0.0, 1.0)
 
+   def _simulate_lidar(self, robot_id):
+    """Simulate LiDAR measurements for a robot and visualize the rays."""
+    num_rays = 36
+    lidar_range = 1
+    
+    pos, orn = p.getBasePositionAndOrientation(robot_id)
+    # Adjust ray starting height slightly above ground
+    pos = (pos[0], pos[1], 0.02)  # Raise rays 2cm above ground
+    base_yaw = p.getEulerFromQuaternion(orn)[2]
+    
+    ray_from = []
+    ray_to = []
+    
+    # Calculate ray directions
+    for ray_angle in np.linspace(-np.pi/2, np.pi/2, num_rays):
+        angle = base_yaw + ray_angle
+        direction = np.array([np.cos(angle), np.sin(angle), 0])
+        ray_from.append(pos)
+        ray_to.append(pos + lidar_range * direction)
+    
+    results = p.rayTestBatch(ray_from, ray_to)
+    
+    #distances = np.array(distances)
+    distances = np.array([res[2] for res in results])
+    return np.clip(distances / lidar_range, 0.0, 1.0)
 
    def _check_ball_in_FOV(self, obs, robot_id):
     #    11-14 are orient of robot1, 26-29 are orient of robot2

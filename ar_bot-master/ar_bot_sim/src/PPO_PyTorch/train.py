@@ -256,7 +256,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                 y = float(row["BallY"])
                 env.set_initial_ball_pos((x, y))
         
-        state, _, _ = env.reset()
+        state, _, _ = env.reset(episodeNum=i_episode)
 
         for t in range(1, max_ep_len+1):
             # select action with policy
