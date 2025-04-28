@@ -56,7 +56,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
     print("training environment name : " + env_name)
 
-    env = env_class(gui=False, path = "ar_bot_gym/", max_timesteps=max_ep_len)
+    env = env_class(gui=True, path = "ar_bot_gym/", max_timesteps=max_ep_len)
 
     # state space dimension
     state_dim = env.observation_space.shape[0]
@@ -165,17 +165,27 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     print("============================================================================================")
     
     i_episode = 0
+    new_ep = True
     
     if pretrain:
         with open("trajectories.csv", "r", newline="") as csv_file:
             reader = csv.DictReader(csv_file)
-            obs, _, _ = env.reset()
-        
-            for row in reader:
-                # Parse csv to get episode #, obs, and actions 
-                ep = int(row["Episode"])
+            
+            while True:
+                row = next(reader, None)
+                
+                if not row:
+                    # Reached end of file
+                    break
+                if new_ep:
+                    # Register a new episode which requires resetting env
+                    new_ep = False
+                    x = float(row["BallX"])
+                    y = float(row["BallY"])
+                    env.set_initial_ball_pos((x, y))
+                    obs, _, _ = env.reset(0)
+
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
-                # action2 = row["Action2"]# Stored as string need as numpy.ndarray
                 
                 # Take the actions in the PPO algo
                 if "," in action1:
@@ -203,7 +213,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
                 # Update PPO agent after episode finished
                 if done:
-                    obs, _, _ = env.reset()
+                    print("finished ep")
+                    i_episode += 1
+                    new_ep = True
                     ppo_agent1.update()
                     # ppo_agent2.update()
 
@@ -211,7 +223,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
         # ppo_agent2.buffer.clear()
         ppo_agent1.save(checkpoint_path1)
         # ppo_agent2.save(checkpoint_path2)
-        print("Finished pretraining")
+        print(f"Finished pretraining {i_episode}")
 
     # logging file
     log_f = open(log_f_name,"w+")

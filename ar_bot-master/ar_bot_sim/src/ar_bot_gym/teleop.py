@@ -2,12 +2,12 @@ import gym
 import pybullet as p
 import numpy as np
 import time
+import random
 from ar_bots_gym import ARBotGymEnv
 import csv
 import os
 from io import StringIO
 import dotenv
-import time
 
 # Initialize the environment with GUI enabled
 env = ARBotGymEnv(gui=True)
@@ -54,7 +54,6 @@ obs, _, (x, y) = env.reset(6000)
 
 output = StringIO()
 writer = csv.writer(output)
-writer.writerow([ep, x, y, obs, "[0. 0.]"])
 try:
     while True:
         # Take action first so obs that is stored is state after actions are taken
@@ -75,8 +74,9 @@ try:
 
             ep += 1
             print("Episode done")
-            obs, _, (x, y) = env.reset()
-            writer.writerow([ep, x, y, obs, "[0. 0.]"])
+            ep_num = random.randint(0, 1000)
+            obs, _, (x, y) = env.reset(ep_num)
+            writer.writerow([ep, x, y, obs, "[0.5 0.5]"])
         
         time.sleep(1./60.)  # Maintain a stable refresh rate
 

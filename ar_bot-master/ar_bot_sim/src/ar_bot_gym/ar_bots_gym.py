@@ -168,7 +168,7 @@ class ARBotGymEnv(gym.Env):
         #[0-1, 0-1]
         angular_acc_delta_norm, linear_acc_delta_norm = action
         # linear_acc_delta_norm, angular_acc_delta_norm = action
-        print(f'Action is {action}')
+        # print(f'Action is {action}')
         # print(f'Angualar Acceleration: {angular_acc_delta_norm}, Linear Acc: {linear_acc_delta_norm}')
         #[-10<->10, -0.05<->0.05]
         angular_acc_delta = -20 + angular_acc_delta_norm * (20 - (-20))
@@ -193,7 +193,7 @@ class ARBotGymEnv(gym.Env):
 
         realAct = np.clip([self.linear_acc_curr, self.angular_acc_curr], [-28, -0.4], [28, 0.4])
 
-        print("realAct", realAct)
+        # print("realAct", realAct)
         
 
         self._apply_action(self.robot1_id, realAct)
