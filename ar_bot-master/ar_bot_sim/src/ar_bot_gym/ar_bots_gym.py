@@ -144,6 +144,20 @@ class ARBotGymEnv(gym.Env):
        if self.gui:
            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
   
+   def _circular_scale(self, x, max_val=28.0):
+    """
+    Scales input from [0,1] to [-max_val,max_val] using a circular function
+    with 0.5 as the neutral position:
+    - 0.5 -> 0 (no movement)
+    - 1.0 -> max_val (full forward)
+    - 0.0 -> -max_val (full reverse)
+    """
+    # Shift input to be centered at 0 by subtracting 0.5
+    centered_x = x - 0.5
+    # Scale to [-pi/2, pi/2] instead of [-pi, pi] for smoother transition
+    theta = centered_x * np.pi
+    # Use sine function for smoother acceleration around center
+    return max_val * np.sin(theta)
   
    def step(self, action, agent_id=None):
         """Apply actions to both robots and return state, reward, done, and info."""
@@ -153,10 +167,16 @@ class ARBotGymEnv(gym.Env):
 
         #[0-1, 0-1]
         angular_acc_delta_norm, linear_acc_delta_norm = action
-
+        # linear_acc_delta_norm, angular_acc_delta_norm = action
+        print(f'Action is {action}')
+        # print(f'Angualar Acceleration: {angular_acc_delta_norm}, Linear Acc: {linear_acc_delta_norm}')
         #[-10<->10, -0.05<->0.05]
-        angular_acc_delta = -10 + angular_acc_delta_norm * (10 - (-10))
-        linear_acc_delta = -0.05 + linear_acc_delta_norm * (0.05 - (-0.05))
+        angular_acc_delta = -20 + angular_acc_delta_norm * (20 - (-20))
+        #TODO: since turning in the code is just linear acceleration in the y-direction then 
+        # holding the A and D keys results in the robot moving in the right direction but the model does "turn"
+ 
+        linear_acc_delta = self._circular_scale(linear_acc_delta_norm, 28.0)
+        # linear_acc_delta = -10 + linear_acc_delta_norm * (10 - (-10))
 
         self.angular_acc_curr += angular_acc_delta
         self.linear_acc_curr += linear_acc_delta
@@ -173,7 +193,7 @@ class ARBotGymEnv(gym.Env):
 
         realAct = np.clip([self.linear_acc_curr, self.angular_acc_curr], [-28, -0.4], [28, 0.4])
 
-        #print("realAct", realAct)
+        print("realAct", realAct)
         
 
         self._apply_action(self.robot1_id, realAct)
