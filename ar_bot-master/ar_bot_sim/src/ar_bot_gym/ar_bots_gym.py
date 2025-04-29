@@ -11,6 +11,7 @@ import sys
 import os
 import random
 from reward_function import compute_team_rewards
+from reward_function import compute_team_rewards_static
 
 
 
@@ -162,7 +163,7 @@ class ARBotGymEnv(gym.Env):
    def step(self, action, agent_id=None):
         """Apply actions to both robots and return state, reward, done, and info."""
         #TODO: tune, current duration is equal to 250hz rn
-
+        prev = self.prev_ball_pos
         self.prev_ball_pos = p.getBasePositionAndOrientation(self.ball)[0]
 
         #[0-1, 0-1]
@@ -213,7 +214,7 @@ class ARBotGymEnv(gym.Env):
         obs = self._get_observation()
         done, _ = self._is_done(obs)
         reward_main= self._compute_reward(self)
-        info = {}
+        info = prev
         
         self.timestep += 1
         if (self.timestep >= self.max_timesteps):
@@ -445,6 +446,9 @@ class ARBotGymEnv(gym.Env):
    def _compute_reward(self, obs):
         return compute_team_rewards(obs)
 
+   def _compute_reward_static(self, obs, prev):
+        return compute_team_rewards_static(obs, prev)
+
    """ Checks if the episode is done, specifically if the ball has reached either goal
        Returns a flag if epsiode is done as well as an int for each robot
        1: is the first robot, named self.robot_id1
@@ -461,6 +465,18 @@ class ARBotGymEnv(gym.Env):
        goalB_pos, _ = p.getBasePositionAndOrientation(self.real_goal_pos2)
        d_ball_goalB = self.dist(ball_pos, goalB_pos)
        d_ball_goalA = self.dist(ball_pos, goalA_pos)
+
+       if d_ball_goalA < 0.075:
+           return True, 1
+       elif d_ball_goalB < 0.075:
+           return True, 2
+      
+       return False, 0
+   
+   def _is_done_static(self, obs):
+       """Check if the episode is done."""
+       d_ball_goalB = obs[42]
+       d_ball_goalA = obs[41]
 
        if d_ball_goalA < 0.075:
            return True, 1

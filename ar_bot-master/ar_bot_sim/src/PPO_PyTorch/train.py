@@ -51,12 +51,12 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     lr_critic = 0.001       # learning rate for critic network
 
     random_seed = 0         # set random seed if required (0 = no random seed)
-    replay_chance = .1     # Set chance to use a replay of a trajectory
+    replay_chance = 0.1     # Set chance to use a replay of a trajectory
     #####################################################
 
     print("training environment name : " + env_name)
 
-    env = env_class(gui=True, path = "ar_bot_gym/", max_timesteps=max_ep_len)
+    env = env_class(gui=False, path = "ar_bot_gym/", max_timesteps=max_ep_len)
 
     # state space dimension
     state_dim = env.observation_space.shape[0]
@@ -142,7 +142,6 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
         print("--------------------------------------------------------------------------------------------")
         print("setting random seed to ", random_seed)
         torch.manual_seed(random_seed)
-        env.seed(random_seed)
         np.random.seed(random_seed)
     #####################################################
 
@@ -165,27 +164,29 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
     print("============================================================================================")
     
     i_episode = 0
-    new_ep = True
+    # new_ep = True
     
     if pretrain:
         with open("trajectories.csv", "r", newline="") as csv_file:
             reader = csv.DictReader(csv_file)
-            
             while True:
                 row = next(reader, None)
+                i += 1
                 
                 if not row:
                     # Reached end of file
                     break
-                if new_ep:
-                    # Register a new episode which requires resetting env
-                    new_ep = False
-                    x = float(row["BallX"])
-                    y = float(row["BallY"])
-                    env.set_initial_ball_pos((x, y))
-                    obs, _, _ = env.reset(0)
+                # if new_ep:
+                #     # Register a new episode which requires resetting env
+                #     new_ep = False
+                #     x = float(row["BallX"])
+                #     y = float(row["BallY"])
+                #     env.set_initial_ball_pos((x, y))
+                #     obs, _, _ = env.reset(0)
 
+                obs = row["Observation"]# Stored as string need as numpy.ndarray
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
+                prev = row["PrevBall"]# Stored as string need as numpy.ndarray
                 
                 # Take the actions in the PPO algo
                 if "," in action1:
@@ -195,16 +196,17 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                     action1 = np.fromstring(action1.strip("[]"), sep=' ')
                     # # action2 = np.fromstring(action2.strip("[]"), sep=' ')
 
-                # print(action1, action2)
-
+                obs = np.fromstring(obs[1:-1].strip(), sep="  ")
                 action1 = np.array(action1, dtype=np.float32)
-                # action2 = np.array(action2, dtype=np.float32)
+                prev = np.fromstring(prev[1:-1], sep=",")
 
                 ppo_agent1.take_action(obs, action1)
                 # ppo_agent2.take_action(obs, action2)
                 
                 # Compute the reward that would occur given the actions
-                obs, reward1, done, info = env.step(action1, 1)
+                reward1 = env._compute_reward_static(obs, prev)
+                done, _ = env._is_done_static(obs)
+                
                 # saving reward and is_terminals
                 ppo_agent1.buffer.rewards.append(reward1)
                 ppo_agent1.buffer.is_terminals.append(done)
@@ -213,9 +215,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
                 # Update PPO agent after episode finished
                 if done:
-                    print("finished ep")
+                    print(f"Episode {i_episode} finished")
                     i_episode += 1
-                    new_ep = True
+                    # new_ep = True
                     ppo_agent1.update()
                     # ppo_agent2.update()
 
@@ -223,7 +225,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
         # ppo_agent2.buffer.clear()
         ppo_agent1.save(checkpoint_path1)
         # ppo_agent2.save(checkpoint_path2)
-        print(f"Finished pretraining {i_episode}")
+        print(f"Finished pretraining")
 
     # logging file
     log_f = open(log_f_name,"w+")
@@ -255,6 +257,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
         
         # Replay has been chosen, set up the state before training
             if rng < replay_chance:
+                if len(ppo_agent1.buffer.rewards) != 0:
+                    ppo_agent1.update()
+                
                 row = next(trajectories, None)
             
                 if not row:
@@ -264,9 +269,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                     row = next(trajectories, None)
             
             # Need to set the ball's position so its not random
-                x = float(row["BallX"])
-                y = float(row["BallY"])
-                env.set_initial_ball_pos((x, y))
+                # x = float(row["BallX"])
+                # y = float(row["BallY"])
+                # env.set_initial_ball_pos((x, y))
         
         state, _, _ = env.reset(episodeNum=i_episode)
 
@@ -284,8 +289,9 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                     ppo_agent1.buffer.clear()
                     # ppo_agent2.buffer.clear()
                     break
+                obs = row["Observation"]# Stored as string need as numpy.ndarray
                 action1 = row["Action1"]# Stored as string need as numpy.ndarray
-                # action2 = row["Action2"]# Stored as string need as numpy.ndarray
+                prev = row["PrevBall"]# Stored as string need as numpy.ndarray
                 
                 # Take the actions in the PPO algo
                 if "," in action1:
@@ -293,19 +299,22 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
                     # action2 = ast.literal_eval(action2)
                 else:
                     action1 = np.fromstring(action1.strip("[]"), sep=' ')
-                    # action2 = np.fromstring(action2.strip("[]"), sep=' ')
+                    # # action2 = np.fromstring(action2.strip("[]"), sep=' ')
 
-                # print(action1, action2)
-
+                obs = np.fromstring(obs[1:-1].strip(), sep="  ")
                 action1 = np.array(action1, dtype=np.float32)
-                # action2 = np.array(action2, dtype=np.float32)
+                prev = np.fromstring(prev[1:-1], sep=",")
 
-                ppo_agent1.take_action(state, action1)
-                # ppo_agent2.take_action(state, action2)
+                ppo_agent1.take_action(obs, action1)
+                # ppo_agent2.take_action(obs, action2)
+                
+                # Compute the reward that would occur given the actions
+                reward1 = env._compute_reward_static(obs, prev)
+                done, _ = env._is_done_static(obs)
             else:
                 action1 = ppo_agent1.select_action(state)
                 # action2 = ppo_agent2.select_action(state)
-            state, reward1, done, info = env.step(action1)
+                state, reward1, done, info = env.step(action1)
 
             # saving reward and is_terminals
             ppo_agent1.buffer.rewards.append(reward1)
@@ -317,7 +326,7 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
             current_ep_reward1 += reward1
 
             # update PPO agent
-            if time_step % update_timestep == 0:
+            if time_step % update_timestep == 0 and not (replay and rng < replay_chance):
                 ppo_agent1.update()
                 # ppo_agent2.update()
 
@@ -371,6 +380,8 @@ def train(env_class, model_name=None, continuation=None, max_ep_len=None, max_tr
 
             # break; if the episode is over
             if done:
+                if replay and rng < replay_chance:
+                    ppo_agent1.update()
                 break
 
         print_running_reward1 += current_ep_reward1

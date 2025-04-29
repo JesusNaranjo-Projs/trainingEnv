@@ -45,7 +45,7 @@ ep = int(os.getenv("episode")) + 1
 if not os.path.exists("trajectories.csv"):
     with open("trajectories.csv", "w", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["Episode","BallX", "BallY", "Observation", "Action1"])
+        writer.writerow(["Episode","BallX", "BallY", "PrevBall", "Observation",  "Action1"])
     if ep != 0:
         ep = 0
         dotenv.set_key(dotenv_file, "episode", "0")
@@ -58,8 +58,8 @@ try:
     while True:
         # Take action first so obs that is stored is state after actions are taken
         action1 = get_keyboard_action()
-        obs, reward, done, info = env.step(action1, 1)
-        writer.writerow([ep, x, y, obs, action1])
+        obs, reward, done, prev = env.step(action1, 1)
+        writer.writerow([ep, x, y, prev, obs, action1])
 
         # Optional: Print reward and observation
         #print(f"Reward: {reward}, Done: {done}")
@@ -74,11 +74,10 @@ try:
 
             ep += 1
             print("Episode done")
-            ep_num = random.randint(0, 1000)
+            ep_num = random.randint(0, 2000)
             obs, _, (x, y) = env.reset(ep_num)
-            writer.writerow([ep, x, y, obs, "[0.5 0.5]"])
         
-        time.sleep(1./60.)  # Maintain a stable refresh rate
+        # time.sleep(1./120.)
 
 except KeyboardInterrupt:
     print("Exiting teleoperation...")
